@@ -8,6 +8,7 @@
 #include "server/zone/objects/area/ActiveArea.h"
 #include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/objects/creature/CreatureObject.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/ship/ShipObject.h"
 #include "server/zone/packets/object/DataTransform.h"
 #include "server/zone/packets/object/DataTransformWithParent.h"
@@ -274,6 +275,16 @@ void SpaceZoneComponent::switchZone(SceneObject* sceneObject, const String& newT
 				auto player = sceneObject->asCreatureObject();
 
 				if (player != nullptr) {
+					// Mark the client as mid-scene-init for the whole gap below. Anything
+					// entering awareness while this is set -- notably a second player
+					// launching into the same region -- must not be sent a create yet.
+					// See ShipObjectImplementation::notifyInsert.
+					auto ghost = player->getPlayerObject();
+
+					if (ghost != nullptr) {
+						ghost->setSpaceSceneInitializing(true);
+					}
+
 					player->sendSceneResetToOwner();
 
 					Reference<CreatureObject*> playerRef = player;
@@ -285,7 +296,15 @@ void SpaceZoneComponent::switchZone(SceneObject* sceneObject, const String& newT
 
 						Locker lock(playerRef);
 
+						// Flushes the whole close-objects vector, including anything
+						// that entered awareness during the window, then reopens sends.
 						playerRef->sendObjectsToOwner(true);
+
+						auto delayedGhost = playerRef->getPlayerObject();
+
+						if (delayedGhost != nullptr) {
+							delayedGhost->setSpaceSceneInitializing(false);
+						}
 					}, "SendObjectsToOwnerDelay", 200);
 				}
 			} else {

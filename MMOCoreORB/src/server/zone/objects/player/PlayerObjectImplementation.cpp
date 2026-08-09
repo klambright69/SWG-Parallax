@@ -507,6 +507,7 @@ void PlayerObjectImplementation::notifySceneReady() {
 
 	teleporting = false;
 	onLoadScreen = false;
+	spaceSceneInitializing = false;
 	forcedTransform = false;
 
 	BaseMessage* msg = new CmdSceneReady();

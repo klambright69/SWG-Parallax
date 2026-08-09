@@ -10,6 +10,7 @@
 #include "server/zone/SpaceZone.h"
 #include "server/zone/managers/ship/ShipManager.h"
 #include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/player/PlayerObject.h"
 #include "server/zone/objects/ship/ShipObject.h"
 #include "server/zone/objects/ship/components/ShipComponent.h"
 #include "server/zone/objects/ship/components/ShipEngineComponent.h"
@@ -593,7 +594,17 @@ void ShipObjectImplementation::notifyInsert(TreeEntry* object) {
 			// → sendTo, sending creates to players BEFORE their CmdStartScene.
 			// Raw COV puts silently add objects without triggering any sends.
 			// After hyperspacing clears, notifyInsertToZone rebuilds COVs properly.
-			bool skipMemberSend = hyperspacing;
+			//
+			// The same applies per-member during launch: addPlayerOnBoard runs as soon
+			// as switchZone returns, but that member's client is still initializing its
+			// scene until the deferred sendObjectsToOwner fires. A create arriving in
+			// that window crashes it to desktop -- which is what happens when a second
+			// player launches into the same region. Raw COV puts here are safe because
+			// that same sendObjectsToOwner flushes the whole COV when the window closes.
+			auto memberGhost = shipMember->getPlayerObject();
+			bool memberInitializing = memberGhost != nullptr && memberGhost->isSpaceSceneInitializing();
+
+			bool skipMemberSend = hyperspacing || memberInitializing;
 
 			if (skipMemberSend) {
 				auto memberCOV = shipMember->getCloseObjects();

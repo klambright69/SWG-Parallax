@@ -98,6 +98,14 @@ class PlayerObject extends IntangibleObject {
 
 	protected boolean onLoadScreen;
 
+	/**
+	 * True between CmdStartScene and the deferred sendObjectsToOwner that follows it when
+	 * entering a space scene. The client cannot accept SceneObjectCreate messages during
+	 * this window -- receiving one crashes it to desktop. Transient: this describes the
+	 * live client connection, never the saved character.
+	 */
+	protected transient boolean spaceSceneInitializing;
+
 	protected boolean forcedTransform;
 
 	protected boolean muted;
@@ -343,6 +351,7 @@ class PlayerObject extends IntangibleObject {
 
 		teleporting = false;
 		onLoadScreen = false;
+		spaceSceneInitializing = false;
 		forcedTransform = false;
 
 		muted = false;
@@ -1291,6 +1300,10 @@ class PlayerObject extends IntangibleObject {
 		onLoadScreen = val;
 	}
 
+	public void setSpaceSceneInitializing(boolean val) {
+		spaceSceneInitializing = val;
+	}
+
 	public void setForcedTransform(boolean val) {
 		forcedTransform = val;
 	}
@@ -1557,6 +1570,11 @@ class PlayerObject extends IntangibleObject {
 	@read
 	public boolean isOnLoadScreen() {
 		return onLoadScreen;
+	}
+
+	@read
+	public boolean isSpaceSceneInitializing() {
+		return spaceSceneInitializing;
 	}
 
 	@read
