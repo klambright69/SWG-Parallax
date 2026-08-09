@@ -59,6 +59,22 @@ void LightsaberCrystalComponentImplementation::notifyLoadFromDatabase() {
 	TangibleObjectImplementation::notifyLoadFromDatabase();
 }
 
+
+// Damage range depends on the loot rarity tier the crystal dropped at. Crystals with
+// no tier-specific ranges configured fall back to the normal range inside CrystalData.
+static void getTierDamageRange(const CrystalData* crystalData, int tier, int& minStat, int& maxStat) {
+	if (tier == LightsaberCrystalComponent::TIER_LEGENDARY) {
+		minStat = crystalData->getMinDamageLegendary();
+		maxStat = crystalData->getMaxDamageLegendary();
+	} else if (tier == LightsaberCrystalComponent::TIER_EXCEPTIONAL) {
+		minStat = crystalData->getMinDamageExceptional();
+		maxStat = crystalData->getMaxDamageExceptional();
+	} else {
+		minStat = crystalData->getMinDamage();
+		maxStat = crystalData->getMaxDamage();
+	}
+}
+
 void LightsaberCrystalComponentImplementation::generateCrystalStats() {
 	ManagedReference<LootManager*> lootManager = getZoneServer()->getLootManager();
 
@@ -78,8 +94,10 @@ void LightsaberCrystalComponentImplementation::generateCrystalStats() {
 	setMaxCondition(getRandomizedStat(minStat, maxStat, itemLevel));
 
 	if (color == 31) {
-		int minStat = crystalData->getMinDamage();
-		int maxStat = crystalData->getMaxDamage();
+		int minStat = 0;
+		int maxStat = 0;
+
+		getTierDamageRange(crystalData, crystalTier, minStat, maxStat);
 
 		damage = getRandomizedStat(minStat, maxStat, itemLevel);
 
@@ -137,8 +155,7 @@ void LightsaberCrystalComponentImplementation::validateCrystalStats() {
 		setMaxCondition(getRandomizedStat(minStat, maxStat, itemLevel));
 
 	if (color == 31) {
-		minStat = crystalData->getMinDamage();
-		maxStat = crystalData->getMaxDamage();
+		getTierDamageRange(crystalData, crystalTier, minStat, maxStat);
 
 		if (damage > maxStat || damage < minStat)
 			damage = getRandomizedStat(minStat, maxStat, itemLevel);

@@ -45,15 +45,15 @@ levelChance = 100
 
 --Chance dividend for attribute bonus modifiers
 baseChance = 100
-yellowChance = 1000
-exceptionalChance = 100000
-legendaryChance = 1000000
+yellowChance = 500
+exceptionalChance = 1000
+legendaryChance = 10000
 
 --Multiplier values for bonus modifiers
 baseModifier = 1
 yellowModifier = 2
 exceptionalModifier = 8
-legendaryModifier = 9
+legendaryModifier = 15
 
 --The chance for random skill mods to be on looted weapons/wearables
 skillModChance = 1000 -- 1 in 1000
@@ -836,6 +836,12 @@ jediCrystalStats = {
 	lightsaber_module_krayt_dragon_pearl = {
 		minDamage = 20,
 		maxDamage = 50,
+		-- Damage ranges for pearls that roll the Exceptional or Legendary loot tier.
+		-- Omit these (or leave them 0) on a crystal to fall back to minDamage/maxDamage.
+		minDamageExceptional = 40,
+		maxDamageExceptional = 60,
+		minDamageLegendary = 50,
+		maxDamageLegendary = 70,
 		minHitpoints = 900,
 		maxHitpoints = 1400,
 		minHealthSac = -6,

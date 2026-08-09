@@ -313,6 +313,25 @@ void LootManagerImplementation::setRandomLootValues(TransactionLog& trx, Tangibl
 	float modifier = getRandomModifier(itemTemplate, level, excMod);
 
 	auto lootValues = LootValues(itemTemplate, level, modifier);
+
+	// Lightsaber crystals roll their stats from jediCrystalStats rather than from the
+	// loot template's craftingValues, so excMod never reaches them via LootValues.
+	// Stamp the rarity tier on the crystal first -- updateCraftingValues below calls
+	// generateCrystalStats, which reads it to pick the damage range.
+	auto crystal = dynamic_cast<LightsaberCrystalComponent*>(prototype);
+
+	if (crystal != nullptr) {
+		int crystalTier = LightsaberCrystalComponent::TIER_NORMAL;
+
+		if (excMod >= legendaryModifier) {
+			crystalTier = LightsaberCrystalComponent::TIER_LEGENDARY;
+		} else if (excMod >= exceptionalModifier) {
+			crystalTier = LightsaberCrystalComponent::TIER_EXCEPTIONAL;
+		}
+
+		crystal->setCrystalTier(crystalTier);
+	}
+
 	prototype->updateCraftingValues(&lootValues, true);
 
 #ifdef LOOTVALUES_DEBUG

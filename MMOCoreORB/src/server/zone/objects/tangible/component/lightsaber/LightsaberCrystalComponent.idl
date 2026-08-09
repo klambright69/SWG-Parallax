@@ -23,6 +23,12 @@ class LightsaberCrystalComponent extends Component {
 	public final static int PREMIUM = 5;
 	public final static int FLAWLESS = 6;
 
+	// Loot rarity tier the crystal dropped at. Selects which damage range in
+	// jediCrystalStats generateCrystalStats rolls against.
+	public final static int TIER_NORMAL = 0;
+	public final static int TIER_EXCEPTIONAL = 1;
+	public final static int TIER_LEGENDARY = 2;
+
 	protected int damage;
 	protected int color;
 	protected int quality;
@@ -32,6 +38,7 @@ class LightsaberCrystalComponent extends Component {
 	protected int sacMind;
 	protected int woundChance;
 	protected int itemLevel;
+	protected int crystalTier;
 	protected float floatForceCost;
 
 	protected unsigned long ownerID;
@@ -53,6 +60,7 @@ class LightsaberCrystalComponent extends Component {
 		color = 0;
 		quality = 0;
 		itemLevel = 0;
+		crystalTier = TIER_NORMAL;
 		floatForceCost = 0.0;
 
 		ownerID = 0;
@@ -168,6 +176,15 @@ class LightsaberCrystalComponent extends Component {
 
 	public void setItemLevel(int value) {
 		itemLevel = value;
+	}
+
+	public void setCrystalTier(int value) {
+		crystalTier = value;
+	}
+
+	@read
+	public int getCrystalTier() {
+		return crystalTier;
 	}
 
 	public void setMinimumDamage(int value) {

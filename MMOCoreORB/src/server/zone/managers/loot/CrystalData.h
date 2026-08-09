@@ -6,6 +6,10 @@
 class CrystalData : public Object {
 	int minDamage;
 	int maxDamage;
+	int minDamageExceptional;
+	int maxDamageExceptional;
+	int minDamageLegendary;
+	int maxDamageLegendary;
 	int minHitpoints;
 	int maxHitpoints;
 	int minHealthSac;
@@ -22,13 +26,18 @@ class CrystalData : public Object {
 	int maxWoundChance;
 
 public:
-	CrystalData() : Object(), minDamage(0), maxDamage(0), minHitpoints(0), maxHitpoints(0), minHealthSac(0), maxHealthSac(0), minActionSac(0), maxActionSac(0),
+	CrystalData() : Object(), minDamage(0), maxDamage(0), minDamageExceptional(0), maxDamageExceptional(0), minDamageLegendary(0), maxDamageLegendary(0),
+		minHitpoints(0), maxHitpoints(0), minHealthSac(0), maxHealthSac(0), minActionSac(0), maxActionSac(0),
 		minMindSac(0), maxMindSac(0), minAttackSpeed(0.0), maxAttackSpeed(0.0), minForceCost(0.0), maxForceCost(0.0), minWoundChance(0), maxWoundChance(0) {
 	}
 
 	CrystalData(const CrystalData& data) : Object() {
 		minDamage = data.minDamage;
 		maxDamage = data.maxDamage;
+		minDamageExceptional = data.minDamageExceptional;
+		maxDamageExceptional = data.maxDamageExceptional;
+		minDamageLegendary = data.minDamageLegendary;
+		maxDamageLegendary = data.maxDamageLegendary;
 		minHitpoints = data.minHitpoints;
 		maxHitpoints = data.maxHitpoints;
 		minHealthSac = data.minHealthSac;
@@ -51,6 +60,10 @@ public:
 
 		minDamage = data.minDamage;
 		maxDamage = data.maxDamage;
+		minDamageExceptional = data.minDamageExceptional;
+		maxDamageExceptional = data.maxDamageExceptional;
+		minDamageLegendary = data.minDamageLegendary;
+		maxDamageLegendary = data.maxDamageLegendary;
 		minHitpoints = data.minHitpoints;
 		maxHitpoints = data.maxHitpoints;
 		minHealthSac = data.minHealthSac;
@@ -72,6 +85,10 @@ public:
 	void readObject(LuaObject* luaObject) {
 		minDamage = luaObject->getIntField("minDamage");
 		maxDamage = luaObject->getIntField("maxDamage");
+		minDamageExceptional = luaObject->getIntField("minDamageExceptional");
+		maxDamageExceptional = luaObject->getIntField("maxDamageExceptional");
+		minDamageLegendary = luaObject->getIntField("minDamageLegendary");
+		maxDamageLegendary = luaObject->getIntField("maxDamageLegendary");
 		minHitpoints = luaObject->getIntField("minHitpoints");
 		maxHitpoints = luaObject->getIntField("maxHitpoints");
 		minHealthSac = luaObject->getIntField("minHealthSac");
@@ -94,6 +111,24 @@ public:
 
 	inline int getMaxDamage() const {
 		return maxDamage;
+	}
+
+	// Tier ranges are optional per crystal. A crystal that does not define them
+	// (both bounds left at 0) falls back to the normal damage range.
+	inline int getMinDamageExceptional() const {
+		return (minDamageExceptional == 0 && maxDamageExceptional == 0) ? minDamage : minDamageExceptional;
+	}
+
+	inline int getMaxDamageExceptional() const {
+		return (minDamageExceptional == 0 && maxDamageExceptional == 0) ? maxDamage : maxDamageExceptional;
+	}
+
+	inline int getMinDamageLegendary() const {
+		return (minDamageLegendary == 0 && maxDamageLegendary == 0) ? minDamage : minDamageLegendary;
+	}
+
+	inline int getMaxDamageLegendary() const {
+		return (minDamageLegendary == 0 && maxDamageLegendary == 0) ? maxDamage : maxDamageLegendary;
 	}
 
 	inline int getMinHitpoints() const {
