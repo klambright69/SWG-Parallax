@@ -1386,12 +1386,17 @@ void CraftingSessionImplementation::createPrototype(int clientCounter, bool crea
 		String xpType = manufactureSchematic->getDraftSchematic()->getXpType();
 		int xp = manufactureSchematic->getDraftSchematic()->getXpAmount();
 
+		// Server tuning: prototype creation is instant. Retail scaled the countdown
+		// with schematic complexity -- restore getComplexity() * 2 here to bring the
+		// timed version back.
+		const int creationTimer = 0;
+
 		if (createItem) {
-			startCreationTasks(manufactureSchematic->getComplexity() * 2, false);
+			startCreationTasks(creationTimer, false);
 
 		} else {
 			// This is for practicing
-			startCreationTasks(manufactureSchematic->getComplexity() * 2, true);
+			startCreationTasks(creationTimer, true);
 			xp = round(xp * 1.05f);
 		}
 

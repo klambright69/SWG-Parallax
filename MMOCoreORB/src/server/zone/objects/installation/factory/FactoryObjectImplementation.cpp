@@ -566,7 +566,11 @@ bool FactoryObjectImplementation::startFactory() {
 	timer = 30;
 	info(true) << "Factory Testing Timer Set To: " << timer;
 #else
-	timer = ((int)schematic->getComplexity()) * 8;
+	// Server tuning: factory production is instant. Retail scaled this with
+	// schematic complexity (getComplexity() * 8 seconds) -- restore that expression
+	// to bring the per-item delay back. This value drives both the first item and
+	// every reschedule, so an entire run is now produced back to back.
+	timer = 0;
 #endif
 
 	if (!populateSchematicBlueprint(schematic))

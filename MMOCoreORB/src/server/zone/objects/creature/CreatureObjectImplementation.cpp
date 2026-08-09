@@ -262,6 +262,20 @@ void CreatureObjectImplementation::loadTemplateData(SharedObjectTemplate* templa
 		walkSpeed = 0;
 	}
 
+	// Server tuning: players move 25% faster than the template baseline. This scales
+	// runSpeed rather than speedMultiplierBase deliberately -- checkPlayerSpeedTest
+	// validates against speedMultiplierMod * runSpeed and never reads
+	// speedMultiplierBase, so boosting the multiplier alone would speed the client up
+	// past what the server accepts and rubber-band every player. Derived from the
+	// template value on each load, so it cannot compound across logins.
+	// Set playerSpeedScale to 1.f to restore retail speeds.
+	if (isPlayerCreature()) {
+		static constexpr float playerSpeedScale = 1.25f;
+
+		runSpeed *= playerSpeedScale;
+		walkSpeed *= playerSpeedScale;
+	}
+
 	auto zoneServer = ServerCore::getZoneServer();
 
 	if (zoneServer && isPlayerCreature()) {
