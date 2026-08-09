@@ -5,9 +5,9 @@ gilBurtinConvoHandler = conv_handler:new {}
 function gilBurtinConvoHandler:getInitialScreen(pPlayer, pNpc, pConvTemplate)
 	local convoTemplate = LuaConversationTemplate(pConvTemplate)
 
-	if (not isJtlEnabled()) then
-		return convoTemplate:getScreen("you_dont_look")
-	end
+	--if (not isJtlEnabled()) then
+	--	return convoTemplate:getScreen("you_dont_look")
+	--end
 
 	-- Player is a neutral pilot
 	if (SpaceHelpers:isNeutralPilot(pPlayer)) then

@@ -12,9 +12,9 @@ function aqzowConvoHandler:getInitialScreen(pPlayer, pNpc, pConvTemplate)
 	local playerID = CreatureObject(pPlayer):getObjectID()
 
 	-- JTL is disabled
-	if (not isJtlEnabled()) then
-		return convoTemplate:getScreen("no_jtl")
-	end
+	--if (not isJtlEnabled()) then
+	--	return convoTemplate:getScreen("no_jtl")
+	--end
 
 	-- Player is Imperial Pilot
 	if (SpaceHelpers:isImperialPilot(pPlayer)) then

@@ -11,9 +11,9 @@ function ramnaConvoHandler:getInitialScreen(pPlayer, pNpc, pConvTemplate)
 	local playerID = CreatureObject(pPlayer):getObjectID()
 
 	-- JTL is disabled
-	if (not isJtlEnabled()) then
-		return convoTemplate:getScreen("not_tier3")
-	end
+	--if (not isJtlEnabled()) then
+	--	return convoTemplate:getScreen("not_tier3")
+	--end
 
 	-- TESTING PRINT
 	--print("ramnaConvoHandler:getInitialScreen  -- called")

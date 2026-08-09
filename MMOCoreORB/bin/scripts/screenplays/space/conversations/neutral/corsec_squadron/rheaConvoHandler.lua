@@ -11,9 +11,9 @@ function rheaConvoHandler:getInitialScreen(pPlayer, pNpc, pConvTemplate)
 	local playerID = CreatureObject(pPlayer):getObjectID()
 
 	-- JTL is disabled
-	if (not isJtlEnabled()) then
-		return convoTemplate:getScreen("no_jtl") -- Sorry, but you don't look like a pilot to me.
-	end
+	--if (not isJtlEnabled()) then
+	--	return convoTemplate:getScreen("no_jtl") -- Sorry, but you don't look like a pilot to me.
+	--end
 
 	-- Player is Rebel Pilot
 	if (SpaceHelpers:isRebelPilot(pPlayer)) then

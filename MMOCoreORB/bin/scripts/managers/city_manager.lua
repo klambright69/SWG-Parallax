@@ -49,31 +49,31 @@ which carries forward this exception.
 	--------------------
 --]]
 --The amount of time in minutes before the city specialization may be changed again.
-CitySpecializationCooldown = 604800000
+CitySpecializationCooldown = 1440
 
 --The amount of time in minutes before another withdrawal from the city treasury may be made.
-TreasuryWithdrawalCooldown = 86400000
+TreasuryWithdrawalCooldown = 1440
 
 --The number of city update cycles that must pass before mayoral voting process is complete.
-CityVotingCycles = 3
+CityVotingCycles = 1
 
 --The number of city update cyles after which to lock the mayoral voting race registration.
 CityVotingCyclesUntilLocked = 2
 
 --The amount of time in minutes before the city performs an update.
-CityUpdateInterval = 10080
+CityUpdateInterval = 1440
 
 --The amount of time in minutes a new city has to gain enough citizens to remain a city.
 NewCityGracePeriod = 1440
 
 --The amount of time in minutes an old city has to regain enough citizens to remain a city.
-OldCityGracePeriod = 4320
+OldCityGracePeriod = 2880
 
 --Whether or not to allow the use of the command, /cityWarn to give players a TEF while in the city limits.
-EnableCityWarn = false
+EnableCityWarn = true
 
 --The number of citizens required to achieve each city rank. (Outpost, Village, Township, City, Metropolis)
-CitizensPerRank = {2, 4, 6, 8, 10}
+CitizensPerRank = {1, 2, 4, 6, 8}
 --CitizensPerRank = {10, 20, 35, 55, 85}
 
 --The radius in meters of the city at each city rank. (Outpost, Village, Township, City, Metropolis)

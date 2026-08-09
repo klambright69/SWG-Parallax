@@ -13,9 +13,9 @@ function viopaConvoHandler:getInitialScreen(pPlayer, pNpc, pConvTemplate)
 	local playerID = CreatureObject(pPlayer):getObjectID()
 
 	-- JTL is disabled
-	if (not isJtlEnabled()) then
-		return convoTemplate:getScreen("no_jtl")
-	end
+	--if (not isJtlEnabled()) then
+	--	return convoTemplate:getScreen("no_jtl")
+	--end
 
 	-- Testing Reset
 	--HavocSquadronScreenplay:resetViopaQuests(pPlayer)

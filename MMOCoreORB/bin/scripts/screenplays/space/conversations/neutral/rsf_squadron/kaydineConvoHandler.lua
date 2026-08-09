@@ -11,9 +11,9 @@ function kaydineConvoHandler:getInitialScreen(pPlayer, pNpc, pConvTemplate)
 	local playerID = CreatureObject(pPlayer):getObjectID()
 
 	-- JTL is disabled
-	if (not isJtlEnabled()) then
-		return convoTemplate:getScreen("not_pilot")
-	end
+	--if (not isJtlEnabled()) then
+	--	return convoTemplate:getScreen("not_pilot")
+	--end
 
 	-- Check if player has any pilot skills
 	if (not SpaceHelpers:isNeutralPilot(pPlayer)) then

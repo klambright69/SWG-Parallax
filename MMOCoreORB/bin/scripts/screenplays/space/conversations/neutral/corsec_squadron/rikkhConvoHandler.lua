@@ -11,9 +11,9 @@ function rikkhConvoHandler:getInitialScreen(pPlayer, pNpc, pConvTemplate)
 	local playerID = CreatureObject(pPlayer):getObjectID()
 
 	-- JTL is disabled
-	if (not isJtlEnabled()) then
-		return convoTemplate:getScreen("not_pilot")
-	end
+	--if (not isJtlEnabled()) then
+	--	return convoTemplate:getScreen("not_pilot")
+	--end
 
 	-- print("rikkhConvoHandler:getInitialScreen  -- called")
 
