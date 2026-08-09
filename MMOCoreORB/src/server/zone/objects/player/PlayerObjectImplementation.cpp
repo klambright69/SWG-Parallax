@@ -505,6 +505,10 @@ void PlayerObjectImplementation::sendBaselinesTo(SceneObject* player) {
 void PlayerObjectImplementation::notifySceneReady() {
 	// info(true) << cast<CreatureObject*>(parent.get().get())->getDisplayedName() << " --- notifySceneReady called";
 
+	// The client has finished loading its scene, which is the only reliable signal
+	// that it can accept object creates again.
+	bool wasSpaceSceneInitializing = spaceSceneInitializing;
+
 	teleporting = false;
 	onLoadScreen = false;
 	spaceSceneInitializing = false;
@@ -517,6 +521,13 @@ void PlayerObjectImplementation::notifySceneReady() {
 
 	if (creature == nullptr) {
 		return;
+	}
+
+	// Anything that entered awareness while the space scene was loading was added to
+	// the close objects vector without being sent, to avoid crashing the loading
+	// client. Deliver it now that the client reports itself ready.
+	if (wasSpaceSceneInitializing) {
+		creature->sendObjectsToOwner(true);
 	}
 
 	creature->broadcastPvpStatusBitmask();

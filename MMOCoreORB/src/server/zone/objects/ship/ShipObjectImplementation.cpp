@@ -596,11 +596,12 @@ void ShipObjectImplementation::notifyInsert(TreeEntry* object) {
 			// After hyperspacing clears, notifyInsertToZone rebuilds COVs properly.
 			//
 			// The same applies per-member during launch: addPlayerOnBoard runs as soon
-			// as switchZone returns, but that member's client is still initializing its
-			// scene until the deferred sendObjectsToOwner fires. A create arriving in
-			// that window crashes it to desktop -- which is what happens when a second
-			// player launches into the same region. Raw COV puts here are safe because
-			// that same sendObjectsToOwner flushes the whole COV when the window closes.
+			// as switchZone returns, but that member's client keeps loading the space
+			// scene for seconds afterwards, until it sends CmdSceneReady. A create
+			// arriving before then crashes it to desktop -- which is what happens to
+			// the player who launched first when a second player launches into the same
+			// region. Raw COV puts here are safe because notifySceneReady flushes the
+			// whole COV once the client reports ready.
 			auto memberGhost = shipMember->getPlayerObject();
 			bool memberInitializing = memberGhost != nullptr && memberGhost->isSpaceSceneInitializing();
 

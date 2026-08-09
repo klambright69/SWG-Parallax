@@ -267,11 +267,18 @@ void SpaceZoneComponent::switchZone(SceneObject* sceneObject, const String& newT
 		if (newParent->transferObject(sceneObject, playerArrangement, false, false, false)) {
 			bool isShipParent = newParent->isPilotChair() || newParent->isCellObject() || newParent->isShipTurret() || newParent->isOperationsChair();
 
+			// A fighter's pilot is parented to the ship object itself rather than to a
+			// chair, so the checks above match only POB launches. Every non-POB launch
+			// was falling through to the plain sendToOwner below, which emits
+			// CmdStartScene and then every close object in the same frame -- and left
+			// the client unguarded for the seconds its scene takes to load.
+			bool deferSceneObjects = isShipParent || newParent->isValidJtlParent();
+
 			// For ship parents, split sendToOwner into two phases with a delay.
 			// The SWG client needs time to process CmdStartScene (scene reset / terrain load)
 			// before receiving SceneObjectCreate messages. If Creates arrive in the same UDP
 			// frame as CmdStartScene, the client may crash due to async scene initialization.
-			if (isShipParent && sceneObject->isPlayerCreature()) {
+			if (deferSceneObjects && sceneObject->isPlayerCreature()) {
 				auto player = sceneObject->asCreatureObject();
 
 				if (player != nullptr) {
@@ -296,16 +303,33 @@ void SpaceZoneComponent::switchZone(SceneObject* sceneObject, const String& newT
 
 						Locker lock(playerRef);
 
-						// Flushes the whole close-objects vector, including anything
-						// that entered awareness during the window, then reopens sends.
 						playerRef->sendObjectsToOwner(true);
-
-						auto delayedGhost = playerRef->getPlayerObject();
-
-						if (delayedGhost != nullptr) {
-							delayedGhost->setSpaceSceneInitializing(false);
-						}
 					}, "SendObjectsToOwnerDelay", 200);
+
+					// The window above populates the initial scene, but the client is
+					// not finished loading it for several more seconds -- it says so
+					// itself with CmdSceneReady, which is where the flag is cleared and
+					// anything deferred meanwhile gets flushed. This is only a safety
+					// net: if that message never arrives the player would stop receiving
+					// new objects entirely, so force the window shut.
+					Core::getTaskManager()->scheduleTask([playerRef] () {
+						if (playerRef == nullptr) {
+							return;
+						}
+
+						Locker lock(playerRef);
+
+						auto lateGhost = playerRef->getPlayerObject();
+
+						if (lateGhost == nullptr || !lateGhost->isSpaceSceneInitializing()) {
+							return;
+						}
+
+						lateGhost->error() << "space scene init window expired without CmdSceneReady; forcing sends back open";
+
+						lateGhost->setSpaceSceneInitializing(false);
+						playerRef->sendObjectsToOwner(true);
+					}, "SpaceSceneInitTimeout", 30000);
 				}
 			} else {
 				sceneObject->sendToOwner(true);
