@@ -275,11 +275,13 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU
 
 	if (CxxFlag${flag_comp})
 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${flag_comp}")
+	        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
 	endif()
     endforeach(flag_comp)
 
     if (ENABLE_ERROR_ON_WARNINGS)
 	   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+	   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=stringop-overflow")
     endif(ENABLE_ERROR_ON_WARNINGS)
 
     if (ENABLE_ASAN)

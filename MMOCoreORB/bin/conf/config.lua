@@ -147,7 +147,7 @@ Core3 = {
 	},
 
 	------TRE config------
-	TrePath = "/home/swgemu/Desktop/SWGEmu",
+	TrePath = "/home/ubuntu/Desktop/SWGEmu",
 	TreFiles = {
 		"default_patch.tre",
 		"patch_sku1_14_00.tre",
@@ -244,6 +244,15 @@ Core3 = {
 	------Server Config------
 	CharacterBuilderEnabled = "true",
 	AutoReg = 1,
+
+	------Player Manager Config------
+	PlayerManager = {
+		-- Group invites work galaxy wide. /invite <name> resolves the target by name
+		-- through the PlayerManager instead of requiring them in the inviter's scene,
+		-- and group system messages switch from object IDs to names so distant
+		-- clients can render them. Inviting your own pet still requires 120m.
+		GalaxyWideGrouping = true,
+	},
 
 	------TOS Config------
 	TermsOfServiceVersion = 0,
