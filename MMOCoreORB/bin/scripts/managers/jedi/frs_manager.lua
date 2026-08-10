@@ -4,9 +4,22 @@ frsEnabled = 1
 lightEnclaveID = 8525417
 darkEnclaveID = 3435626
 
-petitionInterval = 86400000 -- 1 day
+-- Server tuning: the petitioning phase resolves as fast as the FRS allows.
+-- VoteStatusTask advances a phase only when (tickDiff + 30000 >= interval), so any
+-- value at or below 30000 makes it advance on every tick -- there is no benefit to
+-- going lower. The remaining delay is VoteStatusTask's own 5 minute cadence
+-- (FrsManager::VOTE_STATUS_TICK), which is a compiled constant, not config.
+petitionInterval = 30000 -- was 1 day; advances on the next vote status tick
+
 votingInterval = 86400000 -- 1 day
+
+-- NOT shortened deliberately. acceptanceInterval is the deadline a winner has to
+-- click "Accept Promotion", not a wait before they may do so -- acceptance is
+-- available the moment the phase turns to WAITING. When this elapses the promotion
+-- is revoked ("your deadline for accepting a promotion has passed") and the player
+-- must petition and win a vote again, so shortening it destroys promotions.
 acceptanceInterval = 86400000 -- 1 day
+
 maintenanceInterval = 86400000 -- 1 day
 
 requestDemotionDuration = 604800000 -- 7 days

@@ -56,7 +56,11 @@ class FrsManager extends ManagedService implements Logger {
 
 	public static final int ARENA_CELL = 3435643;
 
-	public static final unsigned long VOTE_STATUS_TICK = 300000; // 5 mins
+	// Server tuning: was 300000 (5 mins). This is the cadence at which VoteStatusTask
+	// advances FRS voting phases, so it is the floor on how fast petitioning can
+	// resolve. Note the same task also drives runChallengeVoteUpdate and
+	// performArenaMaintenance, which now run 30x more often than stock.
+	public static final unsigned long VOTE_STATUS_TICK = 10000; // 10 secs
 
 	private transient FrsManagerData managerData;
 
