@@ -6,8 +6,8 @@ geo_power_cube_green = {
 	customObjectName = "",
 	directObjectTemplate = "object/tangible/component/weapon/geonosian_power_cube_green.iff",
 	craftingValues = {
-		{"armor_integrity",6000,12000,0},
-		{"hitpoints",200,400,0},
+		{"armor_integrity",6900,13800,0},
+		{"hitpoints",230,460,0},
 		{"useCount",1,11,0},
 	},
 	customizationStringNames = {},
