@@ -43,6 +43,13 @@
 
 SitServerCommand = {
         name = "sitserver",
+
+        -- sitserver has no row in the client command table, so unlike stand, kneel
+        -- and prone (all "immediate" there) it fell back to QueueCommand's NORMAL
+        -- default. A NORMAL command is deferred while nextActionTime is in the
+        -- future, which made sitting lag behind the other posture changes.
+        defaultPriority = "immediate",
+        defaultTime = 0,
 }
 
 AddCommand(SitServerCommand)

@@ -9,7 +9,12 @@
 
 class SitServerCommand : public QueueCommand {
 public:
-	const static int MINDELTA = 1600;
+	// Server tuning: was 1600. These per-command floors matched the retail
+	// posture animation lengths, so they gated posture changes server side and
+	// would override any client side animation speed modification. Lowered to
+	// match StandCommand's 100ms, which stays as a spam guard rather than a
+	// pacing mechanism.
+	const static int MINDELTA = 100;
 
 	SitServerCommand(const String& name, ZoneProcessServer* server)
 		: QueueCommand(name, server) {
