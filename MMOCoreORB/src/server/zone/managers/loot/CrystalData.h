@@ -22,13 +22,18 @@ class CrystalData : public Object {
 	float maxAttackSpeed;
 	float minForceCost;
 	float maxForceCost;
+	float minForceCostExceptional;
+	float maxForceCostExceptional;
+	float minForceCostLegendary;
+	float maxForceCostLegendary;
 	int minWoundChance;
 	int maxWoundChance;
 
 public:
 	CrystalData() : Object(), minDamage(0), maxDamage(0), minDamageExceptional(0), maxDamageExceptional(0), minDamageLegendary(0), maxDamageLegendary(0),
 		minHitpoints(0), maxHitpoints(0), minHealthSac(0), maxHealthSac(0), minActionSac(0), maxActionSac(0),
-		minMindSac(0), maxMindSac(0), minAttackSpeed(0.0), maxAttackSpeed(0.0), minForceCost(0.0), maxForceCost(0.0), minWoundChance(0), maxWoundChance(0) {
+		minMindSac(0), maxMindSac(0), minAttackSpeed(0.0), maxAttackSpeed(0.0), minForceCost(0.0), maxForceCost(0.0), minForceCostExceptional(0.0), maxForceCostExceptional(0.0),
+		minForceCostLegendary(0.0), maxForceCostLegendary(0.0), minWoundChance(0), maxWoundChance(0) {
 	}
 
 	CrystalData(const CrystalData& data) : Object() {
@@ -50,6 +55,10 @@ public:
 		maxAttackSpeed = data.maxAttackSpeed;
 		minForceCost = data.minForceCost;
 		maxForceCost = data.maxForceCost;
+		minForceCostExceptional = data.minForceCostExceptional;
+		maxForceCostExceptional = data.maxForceCostExceptional;
+		minForceCostLegendary = data.minForceCostLegendary;
+		maxForceCostLegendary = data.maxForceCostLegendary;
 		minWoundChance = data.minWoundChance;
 		maxWoundChance = data.maxWoundChance;
 	}
@@ -76,6 +85,10 @@ public:
 		maxAttackSpeed = data.maxAttackSpeed;
 		minForceCost = data.minForceCost;
 		maxForceCost = data.maxForceCost;
+		minForceCostExceptional = data.minForceCostExceptional;
+		maxForceCostExceptional = data.maxForceCostExceptional;
+		minForceCostLegendary = data.minForceCostLegendary;
+		maxForceCostLegendary = data.maxForceCostLegendary;
 		minWoundChance = data.minWoundChance;
 		maxWoundChance = data.maxWoundChance;
 
@@ -101,6 +114,10 @@ public:
 		maxAttackSpeed = luaObject->getFloatField("maxAttackSpeed");
 		minForceCost = luaObject->getFloatField("minForceCost");
 		maxForceCost = luaObject->getFloatField("maxForceCost");
+		minForceCostExceptional = luaObject->getFloatField("minForceCostExceptional");
+		maxForceCostExceptional = luaObject->getFloatField("maxForceCostExceptional");
+		minForceCostLegendary = luaObject->getFloatField("minForceCostLegendary");
+		maxForceCostLegendary = luaObject->getFloatField("maxForceCostLegendary");
 		minWoundChance = luaObject->getIntField("minWoundChance");
 		maxWoundChance = luaObject->getIntField("maxWoundChance");
 	}
@@ -181,6 +198,24 @@ public:
 
 	inline float getMaxForceCost() const {
 		return maxForceCost;
+	}
+
+	// As with the damage tiers: a crystal that leaves both bounds at 0 falls back to
+	// the normal force cost range.
+	inline float getMinForceCostExceptional() const {
+		return (minForceCostExceptional == 0.f && maxForceCostExceptional == 0.f) ? minForceCost : minForceCostExceptional;
+	}
+
+	inline float getMaxForceCostExceptional() const {
+		return (minForceCostExceptional == 0.f && maxForceCostExceptional == 0.f) ? maxForceCost : maxForceCostExceptional;
+	}
+
+	inline float getMinForceCostLegendary() const {
+		return (minForceCostLegendary == 0.f && maxForceCostLegendary == 0.f) ? minForceCost : minForceCostLegendary;
+	}
+
+	inline float getMaxForceCostLegendary() const {
+		return (minForceCostLegendary == 0.f && maxForceCostLegendary == 0.f) ? maxForceCost : maxForceCostLegendary;
 	}
 
 	inline int getMaxWoundChance() const {

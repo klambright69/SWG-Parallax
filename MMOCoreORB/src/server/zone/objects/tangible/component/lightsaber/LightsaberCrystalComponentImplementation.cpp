@@ -75,6 +75,22 @@ static void getTierDamageRange(const CrystalData* crystalData, int tier, int& mi
 	}
 }
 
+// Force cost follows the same tier split as damage. Values are negative (a cost
+// reduction), and min is numerically greater than max, which getRandomizedStat
+// handles via its inverted-range path.
+static void getTierForceCostRange(const CrystalData* crystalData, int tier, float& minStat, float& maxStat) {
+	if (tier == LightsaberCrystalComponent::TIER_LEGENDARY) {
+		minStat = crystalData->getMinForceCostLegendary();
+		maxStat = crystalData->getMaxForceCostLegendary();
+	} else if (tier == LightsaberCrystalComponent::TIER_EXCEPTIONAL) {
+		minStat = crystalData->getMinForceCostExceptional();
+		maxStat = crystalData->getMaxForceCostExceptional();
+	} else {
+		minStat = crystalData->getMinForceCost();
+		maxStat = crystalData->getMaxForceCost();
+	}
+}
+
 void LightsaberCrystalComponentImplementation::generateCrystalStats() {
 	ManagedReference<LootManager*> lootManager = getZoneServer()->getLootManager();
 
@@ -121,8 +137,10 @@ void LightsaberCrystalComponentImplementation::generateCrystalStats() {
 
 		woundChance = getRandomizedStat(minStat, maxStat, itemLevel);
 
-		float minFloatStat = crystalData->getMinForceCost();
-		float maxFloatStat = crystalData->getMaxForceCost();
+		float minFloatStat = 0.f;
+		float maxFloatStat = 0.f;
+
+		getTierForceCostRange(crystalData, crystalTier, minFloatStat, maxFloatStat);
 
 		floatForceCost = getRandomizedStat(minFloatStat, maxFloatStat, itemLevel);
 
@@ -184,8 +202,10 @@ void LightsaberCrystalComponentImplementation::validateCrystalStats() {
 		if (woundChance > maxStat || woundChance < minStat)
 			woundChance = getRandomizedStat(minStat, maxStat, itemLevel);
 
-		float minFloatStat = crystalData->getMinForceCost();
-		float maxFloatStat = crystalData->getMaxForceCost();
+		float minFloatStat = 0.f;
+		float maxFloatStat = 0.f;
+
+		getTierForceCostRange(crystalData, crystalTier, minFloatStat, maxFloatStat);
 
 		if (floatForceCost > maxFloatStat || floatForceCost < minFloatStat)
 			floatForceCost = getRandomizedStat(minFloatStat, maxFloatStat, itemLevel);

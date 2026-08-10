@@ -854,6 +854,12 @@ jediCrystalStats = {
 		maxAttackSpeed = -0.6,
 		minForceCost = -5.0,
 		maxForceCost = -9.9,
+		-- Force cost by loot tier. Min is left at the normal floor; only the ceiling
+		-- moves, so higher level pearls (which saturate toward max) get the benefit.
+		minForceCostExceptional = -5.0,
+		maxForceCostExceptional = -13.0,
+		minForceCostLegendary = -5.0,
+		maxForceCostLegendary = -15.0,
 		minWoundChance = 2,
 		maxWoundChance = 4,
 	}
