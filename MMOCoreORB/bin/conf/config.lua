@@ -254,6 +254,15 @@ Core3 = {
 		GalaxyWideGrouping = true,
 	},
 
+	------Shuttle Config------
+	ShuttleZoneComponent = {
+		-- Milliseconds after server start before shuttles register with their travel
+		-- points. Until this elapses travel points have no shuttle, and ticket
+		-- purchase fails silently in PurchaseTicketCommand. Stock is 5 minutes, which
+		-- makes travel look broken after every restart.
+		BootDelay = 30000,
+	},
+
 	------TOS Config------
 	TermsOfServiceVersion = 0,
 	TermsOfService = "",

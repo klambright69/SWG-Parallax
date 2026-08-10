@@ -70,7 +70,9 @@ public:
 			return GENERALERROR;
 		}
 
-		if (!shuttle->isInRange(creature, 25.f)) {
+		// Server tuning: ticket use range extended from the retail 25m. The travel
+		// point lookup above searches 128m, so 65m stays well inside it.
+		if (!shuttle->isInRange(creature, 65.f)) {
 			creature->sendSystemMessage("@player_structure:boarding_too_far"); //You are too far from the shuttle to board.
 			return GENERALERROR;
 		}

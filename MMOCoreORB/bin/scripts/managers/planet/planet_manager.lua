@@ -40,17 +40,28 @@
 --this exception also makes it possible to release a modified version
 --which carries forward this exception.
 
+-- Server tuning: shuttles are effectively always available to board.
+-- PlanetManagerImplementation falls back to the retail defaults on any value <= 0,
+-- so the away and landing phases use the 1 second minimum rather than 0.
+--
+-- ShuttleDepartureTask makes the landed phase boardable for (landedTime -
+-- landingTime) seconds out of a (landedTime + landingTime) standing window, then
+-- departs for awayTime. At these values that is 3599s boardable per 3602s cycle,
+-- so a shuttle is unavailable for about 3 seconds an hour.
+--
+-- Retail values were: away 300/60, landing 11/14, landed 120/120.
+
 --Time, in seconds, that a shuttle is away for
-shuttleportAwayTime = 300
-starportAwayTime = 60
+shuttleportAwayTime = 1
+starportAwayTime = 1
 
 --Time, in seconds, that a shuttle takes to land
-shuttleportLandingTime = 11
-starportLandingTime = 14
+shuttleportLandingTime = 1
+starportLandingTime = 1
 
 --Time, in seconds, that a shuttle is landed for
-shuttleportLandedTime = 120
-starportLandedTime = 120
+shuttleportLandedTime = 3600
+starportLandedTime = 3600
 
 
 corellia = {
