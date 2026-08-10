@@ -26,12 +26,16 @@ public:
 	}
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
-		int res = creature->hasBuff(buffCRC) ? NOSTACKJEDIBUFF : doJediSelfBuffCommand(creature);
-
-		if (res == NOSTACKJEDIBUFF) {
-			creature->sendSystemMessage("@jedi_spam:already_force_running"); // You are already force running.
-			return GENERALERROR;
+		// Reactivating force run while it is already up cancels it rather than
+		// erroring. removeBuff cascades to the buff's secondary CRCs, so the paired
+		// private_damage_divisor buff on force run 2 and 3 comes off with it, and the
+		// buff's own "@jedi_spam:remove_<name>" end message announces it to the player.
+		if (creature->hasBuff(buffCRC)) {
+			creature->removeBuff(buffCRC);
+			return SUCCESS;
 		}
+
+		int res = doJediSelfBuffCommand(creature);
 		// Return if something is in error.
 		if (res != SUCCESS) {
 			return res;
