@@ -802,6 +802,34 @@ void MissionManagerImplementation::randomizeFactionTerminalMissions(CreatureObje
 	}
 }
 
+Vector3 MissionManagerImplementation::getMissionTargetPosition(CreatureObject* player, float distance) {
+	ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
+	int preference = ghost != nullptr ? ghost->getMissionDirectionPreference() : 0;
+
+	if (preference <= 0 || preference > 8) {
+		// Any direction: the retail behaviour, a random bearing relative to the player.
+		return player->getWorldCoordinate(distance, (float)System::random(360), false);
+	}
+
+	// Compass sectors, 45 degrees each, centred on the chosen bearing. 1 = North and
+	// increasing clockwise, so 1..8 maps to N, NE, E, SE, S, SW, W, NW.
+	float centre = (preference - 1) * 45.f;
+	float bearing = centre + (float)System::random(45) - 22.5f;
+
+	if (bearing < 0.f)
+		bearing += 360.f;
+
+	float radians = bearing * (M_PI / 180.f);
+
+	// World absolute, unlike getWorldCoordinate which is relative to the player's
+	// facing. On this map north is +Y and east is +X, confirmed from the planet edge
+	// regions, so a compass bearing has to be built here rather than reusing that.
+	float x = player->getWorldPositionX() + (sin(radians) * distance);
+	float y = player->getWorldPositionY() + (cos(radians) * distance);
+
+	return Vector3(x, y, 0);
+}
+
 void MissionManagerImplementation::randomizeGenericDestroyMission(CreatureObject* player, MissionObject* mission, const uint32 faction) {
 	Zone* zone = player->getZone();
 
@@ -871,7 +899,7 @@ void MissionManagerImplementation::randomizeGenericDestroyMission(CreatureObject
 
 		int distance = destroyMissionBaseDistance + destroyMissionDifficultyDistanceFactor * difficultyLevel;
 		distance += System::random(destroyMissionRandomDistance) + System::random(destroyMissionDifficultyRandomDistance * difficultyLevel);
-		startPos = player->getWorldCoordinate((float)distance, (float)System::random(360), false);
+		startPos = getMissionTargetPosition(player, (float)distance);
 
 		if (zone->isWithinBoundaries(startPos)) {
 			float height = zone->getHeight(startPos.getX(), startPos.getY());
@@ -920,6 +948,14 @@ void MissionManagerImplementation::randomizeGenericDestroyMission(CreatureObject
 
 	int reward = destroyMissionBaseReward + destroyMissionDifficultyRewardFactor * difficultyLevel;
 	reward += System::random(destroyMissionRandomReward) + System::random(destroyMissionDifficultyRandomReward * difficultyLevel);
+
+	// Per lair reward multiplier. Difficulty is bounded by player/group level, so a
+	// boss lair cannot be made to pay more simply by raising its difficulty -- past
+	// roughly 125 the lair stops being offered at all. This lets one lair pay above
+	// that ceiling without inflating every destroy mission on every planet.
+	// Defaults to 1.0 when the lair's lua does not set rewardMultiplier.
+	reward = (int)(reward * randomLairSpawn->getRewardMultiplier());
+
 	mission->setRewardCredits(reward);
 
 	mission->setMissionDifficulty(difficultyLevel, diffDisplay, difficulty);
@@ -1877,6 +1913,17 @@ LairSpawn* MissionManagerImplementation::getRandomLairSpawn(CreatureObject* play
 	int counter = availableLairList->size();
 	int playerLevel = server->getPlayerManager()->calculatePlayerLevel(player);
 
+	// Mission difficulty tier chosen at the terminal radial. Player level is hard
+	// capped at 25, and lairs are only offered when minDifficulty <= level + 5, so
+	// without this a solo player can never see group tier missions. The offset is
+	// added before the group check below so a grouped player keeps whichever is
+	// higher rather than the two stacking.
+	int difficultyModifier = 0;
+	ManagedReference<PlayerObject*> missionGhost = player->getPlayerObject();
+
+	if (missionGhost != nullptr)
+		difficultyModifier = missionGhost->getMissionDifficultyModifier();
+
 	if (player->isGrouped()) {
 		bool includeFactionPets = faction != Factions::FACTIONNEUTRAL || ConfigManager::instance()->includeFactionPetsForMissionDifficulty();
 		Reference<GroupObject*> group = player->getGroup();
@@ -1886,6 +1933,9 @@ LairSpawn* MissionManagerImplementation::getRandomLairSpawn(CreatureObject* play
 			playerLevel = group->getGroupLevel(includeFactionPets);
 		}
 	}
+
+	// Applied after the group level lookup so it lifts whichever base is in effect.
+	playerLevel += difficultyModifier;
 
 	LairSpawn* lairSpawn = nullptr;
 

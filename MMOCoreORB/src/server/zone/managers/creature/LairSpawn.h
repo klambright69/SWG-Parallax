@@ -24,6 +24,12 @@ namespace creature {
 		int weighting;
 		float size;
 
+		// Multiplies the destroy mission credit reward for this lair only. Base reward
+		// is difficulty * destroyMissionDifficultyRewardFactor, and difficulty is capped
+		// by player/group level (max group level is 120), so a boss lair cannot pay past
+		// that ceiling by difficulty alone. 1.0 leaves the reward untouched.
+		float rewardMultiplier;
+
 		String lairTemplateName;
 
 	public:
@@ -34,6 +40,7 @@ namespace creature {
 			numberToSpawn = 0;
 			weighting = 1;
 			size = 25;
+			rewardMultiplier = 1.f;
 		}
 
 		LairSpawn(const LairSpawn& sp) : Object() {
@@ -43,6 +50,7 @@ namespace creature {
 			numberToSpawn = sp.numberToSpawn;
 			weighting = sp.weighting;
 			size = sp.size;
+			rewardMultiplier = sp.rewardMultiplier;
 
 			lairTemplateName = sp.lairTemplateName;
 		}
@@ -57,6 +65,7 @@ namespace creature {
 			numberToSpawn = sp.numberToSpawn;
 			weighting = sp.weighting;
 			size = sp.size;
+			rewardMultiplier = sp.rewardMultiplier;
 
 			lairTemplateName = sp.lairTemplateName;
 
@@ -70,7 +79,18 @@ namespace creature {
 			numberToSpawn = obj.getIntField("numberToSpawn");
 			weighting = obj.getIntField("weighting");
 			size = obj.getFloatField("size");
+			rewardMultiplier = obj.getFloatField("rewardMultiplier");
+
+			// Absent in lua reads back as 0; treat that as "leave the reward alone" so
+			// every existing lair definition keeps exactly its current payout.
+			if (rewardMultiplier <= 0.f)
+				rewardMultiplier = 1.f;
+
 			lairTemplateName = obj.getStringField("lairTemplateName");
+		}
+
+		float getRewardMultiplier() const {
+			return rewardMultiplier;
 		}
 
 		int getSpawnLimit() const {

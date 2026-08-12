@@ -69,6 +69,12 @@ class MissionTerminal extends Terminal {
 
 	public native int handleObjectMenuSelect(CreatureObject player, byte selectedID);
 
+	@local
+	public native void sendMissionDifficultyBox(CreatureObject player);
+
+	@local
+	public native void sendMissionDirectionBox(CreatureObject player);
+
 	@dirty
 	public native string getTerminalName();
 

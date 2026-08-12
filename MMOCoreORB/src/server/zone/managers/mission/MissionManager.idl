@@ -94,6 +94,10 @@ class MissionManager extends Observer implements Logger {
 	private native void loadPlayerBounties();
 
 	public native void handleMissionListRequest(MissionTerminal missionTerminal, CreatureObject player, int counter);
+
+	@local
+	@dereferenced
+	public native Vector3 getMissionTargetPosition(CreatureObject player, float distance);
 	public native void handleMissionAccept(MissionTerminal missionTerminal, MissionObject mission, CreatureObject player);
 	public native void handleMissionFail(MissionObject mission, CreatureObject player);
 	public native void handleMissionAbort(MissionObject mission, CreatureObject player, boolean questMessage = false);

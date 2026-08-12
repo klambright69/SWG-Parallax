@@ -96,6 +96,18 @@ class PlayerObject extends IntangibleObject {
 
 	protected boolean teleporting;
 
+	// Mission terminal preferences, chosen from the terminal radial and persisted so a
+	// player's choice survives relog.
+	//
+	// missionDifficultyModifier is added to the player's effective level when destroy
+	// missions pick a lair, letting a solo player reach tiers that otherwise require a
+	// group. 0 = Solo, 15 = Group, 30 = Heroic.
+	protected int missionDifficultyModifier;
+
+	// Compass sector missions are generated in. 0 = any direction, 1..8 = N, NE, E,
+	// SE, S, SW, W, NW.
+	protected int missionDirectionPreference;
+
 	protected boolean onLoadScreen;
 
 	/**
@@ -348,6 +360,9 @@ class PlayerObject extends IntangibleObject {
 		commandMessageStrings.setNoDuplicateInsertPlan();
 
 		bankLocation = "";
+
+		missionDifficultyModifier = 0;
+		missionDirectionPreference = 0;
 
 		teleporting = false;
 		onLoadScreen = false;
@@ -1294,6 +1309,24 @@ class PlayerObject extends IntangibleObject {
 
 	public void setTeleporting(boolean val) {
 		teleporting = val;
+	}
+
+	public void setMissionDifficultyModifier(int val) {
+		missionDifficultyModifier = val;
+	}
+
+	@read
+	public int getMissionDifficultyModifier() {
+		return missionDifficultyModifier;
+	}
+
+	public void setMissionDirectionPreference(int val) {
+		missionDirectionPreference = val;
+	}
+
+	@read
+	public int getMissionDirectionPreference() {
+		return missionDirectionPreference;
 	}
 
 	public void setOnLoadScreen(boolean val) {

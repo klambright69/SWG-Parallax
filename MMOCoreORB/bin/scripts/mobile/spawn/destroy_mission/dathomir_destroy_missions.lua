@@ -157,6 +157,19 @@ dathomir_destroy_missions = {
 			minDifficulty = 87,
 			maxDifficulty = 91,
 			size = 35,
+		},
+		{
+			-- Ancient Bull Rancor. Difficulty is kept in line with the other rancor
+			-- boss lairs because destroy missions are only offered when
+			-- minDifficulty <= playerLevel + 5, and group level tops out around 120 --
+			-- a difficulty high enough to pay 60k on its own would never be offered.
+			-- rewardMultiplier lifts the payout instead:
+			--   375 * 88..92 (+ small random) * 1.75  ~=  57,750 - 62,790 credits
+			lairTemplateName = "dathomir_rancor_ancient_bull_lair_neutral_large",
+			minDifficulty = 88,
+			maxDifficulty = 92,
+			rewardMultiplier = 1.75,
+			size = 35,
 		}
 	}
 }

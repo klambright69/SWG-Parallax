@@ -12,9 +12,20 @@
 #include "server/zone/managers/city/CityManager.h"
 #include "server/zone/managers/city/CityRemoveAmenityTask.h"
 #include "server/zone/objects/player/sessions/SlicingSession.h"
+#include "server/zone/objects/player/PlayerObject.h"
+#include "server/zone/objects/player/sui/listbox/SuiListBox.h"
+#include "server/zone/objects/player/sui/callbacks/MissionDifficultySuiCallback.h"
+#include "server/zone/objects/player/sui/callbacks/MissionDirectionSuiCallback.h"
+#include "server/zone/managers/radial/RadialOptions.h"
 
 void MissionTerminalImplementation::fillObjectMenuResponse(ObjectMenuResponse* menuResponse, CreatureObject* player) {
 	TerminalImplementation::fillObjectMenuResponse(menuResponse, player);
+
+	// Mission tuning options. Offered on every mission terminal on every planet, and
+	// deliberately not gated on terminal type -- bounty terminals share this handler
+	// but ignore the settings, which is harmless.
+	menuResponse->addRadialMenuItem(RadialOptions::SERVER_MENU1, 3, "Set Mission Difficulty");
+	menuResponse->addRadialMenuItem(RadialOptions::SERVER_MENU3, 3, "Set Mission Direction");
 
 	ManagedReference<CityRegion*> city = player->getCityRegion().get();
 
@@ -32,6 +43,16 @@ void MissionTerminalImplementation::fillObjectMenuResponse(ObjectMenuResponse* m
 
 int MissionTerminalImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
 	ManagedReference<CityRegion*> city = player->getCityRegion().get();
+
+	if (selectedID == RadialOptions::SERVER_MENU1) {
+		sendMissionDifficultyBox(player);
+		return 0;
+	}
+
+	if (selectedID == RadialOptions::SERVER_MENU3) {
+		sendMissionDirectionBox(player);
+		return 0;
+	}
 
 	if (selectedID == 69 && player->hasSkill("combat_smuggler_slicing_01")) {
 		if (isBountyTerminal())
@@ -90,4 +111,60 @@ String MissionTerminalImplementation::getTerminalName() {
 		name = name + "_" + terminalType;
 
 	return name;
+}
+
+void MissionTerminalImplementation::sendMissionDifficultyBox(CreatureObject* player) {
+	ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
+
+	if (ghost == nullptr)
+		return;
+
+	ManagedReference<SuiListBox*> box = new SuiListBox(player, SuiWindowType::NONE);
+	box->setCallback(new MissionDifficultySuiCallback(player->getZoneServer()));
+	box->setPromptTitle("Mission Difficulty");
+	box->setPromptText("Choose the difficulty tier for missions offered by this terminal. "
+		"A higher tier raises your effective level when missions are generated, so a solo "
+		"player can reach tiers that normally require a group.\n\nCurrent modifier: +"
+		+ String::valueOf(ghost->getMissionDifficultyModifier()));
+
+	// Row order must match MissionDifficultySuiCallback.
+	box->addMenuItem("Solo (+0)");
+	box->addMenuItem("Group (+15)");
+	box->addMenuItem("Heroic (+65)");
+
+	box->setUsingObject(_this.getReferenceUnsafeStaticCast());
+	box->setForceCloseDistance(16.f);
+
+	ghost->addSuiBox(box);
+	player->sendMessage(box->generateMessage());
+}
+
+void MissionTerminalImplementation::sendMissionDirectionBox(CreatureObject* player) {
+	ManagedReference<PlayerObject*> ghost = player->getPlayerObject();
+
+	if (ghost == nullptr)
+		return;
+
+	ManagedReference<SuiListBox*> box = new SuiListBox(player, SuiWindowType::NONE);
+	box->setCallback(new MissionDirectionSuiCallback(player->getZoneServer()));
+	box->setPromptTitle("Mission Direction");
+	box->setPromptText("Choose which direction missions should send you. Targets are "
+		"generated within a 45 degree sector on that bearing from your position.");
+
+	// Row order must match MissionDirectionSuiCallback.
+	box->addMenuItem("Any Direction");
+	box->addMenuItem("North");
+	box->addMenuItem("Northeast");
+	box->addMenuItem("East");
+	box->addMenuItem("Southeast");
+	box->addMenuItem("South");
+	box->addMenuItem("Southwest");
+	box->addMenuItem("West");
+	box->addMenuItem("Northwest");
+
+	box->setUsingObject(_this.getReferenceUnsafeStaticCast());
+	box->setForceCloseDistance(16.f);
+
+	ghost->addSuiBox(box);
+	player->sendMessage(box->generateMessage());
 }
