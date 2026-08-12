@@ -211,10 +211,27 @@ tatooine_regions = {
 	{"@tatooine_region_names:mos_taike_medium_newbie", 3835, 2350, {RING, 600, 1100}, SPAWNAREA, {"tatooine_mos_taike_medium_newbie"}, 64},
 
 	{"@tatooine_region_names:hard_krayt_ne", 6515, 4215, {CIRCLE, 785}, SPAWNAREA + NAVAREA, {"tatooine_hard_krayt_ne"}, 8},
-	{"@tatooine_region_names:north_eastern_krayt_background", 908, 930, {RECTANGLE, 7830, 5357}, SPAWNAREA, {"tatooine_north_eastern_krayt_background"}, 256},
+	-- Krayt Dragon Graveyard: this rectangle originally spanned (908,930)-(7830,5357)
+	-- and covered the graveyard, spawning bandits and dragonets there. It is split into
+	-- four pieces that tile the same footprint minus the graveyard box
+	-- (6650,4260)-(7680,5000), so only the krayt group spawns inside it.
+	{"@tatooine_region_names:north_eastern_krayt_background", 908, 930, {RECTANGLE, 6650, 5357}, SPAWNAREA, {"tatooine_north_eastern_krayt_background"}, 256},
+	{"north_eastern_krayt_background_e", 7680, 930, {RECTANGLE, 7830, 5357}, SPAWNAREA, {"tatooine_north_eastern_krayt_background"}, 256},
+	{"north_eastern_krayt_background_s", 6650, 930, {RECTANGLE, 7680, 4260}, SPAWNAREA, {"tatooine_north_eastern_krayt_background"}, 256},
+	{"north_eastern_krayt_background_n", 6650, 5000, {RECTANGLE, 7680, 5357}, SPAWNAREA, {"tatooine_north_eastern_krayt_background"}, 256},
 	{"@tatooine_region_names:jundland_waste_1", -3488, 4240, {CIRCLE, 1125}, SPAWNAREA, {"tatooine_jundland_wastes"}, 64},
 	{"@tatooine_region_names:jundland_waste_2", -3296, -1016, {CIRCLE, 1250}, SPAWNAREA, {"tatooine_jundland_wastes"}, 64},
-	{"@tatooine_region_names:eastern_dune_sea", 2320, 784, {RECTANGLE, 8000, 7696}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 256},
+	-- Also carved around the Krayt Dragon Graveyard box; originally (2320,784)-(8000,7696).
+	{"@tatooine_region_names:eastern_dune_sea", 2320, 784, {RECTANGLE, 6650, 7696}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 256},
+	{"eastern_dune_sea_e", 7680, 784, {RECTANGLE, 8000, 7696}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 256},
+	{"eastern_dune_sea_s", 6650, 784, {RECTANGLE, 7680, 4260}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 256},
+	{"eastern_dune_sea_n", 6650, 5000, {RECTANGLE, 7680, 7696}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 256},
+
+	-- Krayt Dragon Graveyard, krayt lairs only. NOWORLDSPAWNAREA suppresses the
+	-- planet-wide tatooine_world spawner inside the box; the two rectangles above are
+	-- carved around it. hard_krayt_ne also overlaps here and is left alone because it
+	-- contains nothing but krayt lairs.
+	{"@tatooine_region_names:krayt_graveyard_spawn", 6650, 4260, {RECTANGLE, 7680, 5000}, SPAWNAREA + NOWORLDSPAWNAREA, {"tatooine_krayt_graveyard"}, 8},
 	{"@tatooine_region_names:western_dune_sea_1", -8000, -8000, {RECTANGLE, -3728, -432}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 256},
 	{"@tatooine_region_names:western_dune_sea_2", -2160, -5920, {CIRCLE, 1968}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 64},
 	{"@tatooine_region_names:western_dune_sea_3", -4904, -2536, {CIRCLE, 2424}, SPAWNAREA, {"tatooine_hard_dune_sea"}, 128},
