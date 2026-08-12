@@ -11,9 +11,15 @@ FsIntro = ScreenPlay:new {
 	USEDATAPADTWO = 7,
 	VILLAGE = 8,
 
+	-- Values are in seconds. A random value between the two is picked per step.
+	-- Retail used 12-36 hours for the old man and 1-12 hours for the sith shadow;
+	-- both are shortened here.
+	--
+	-- Note that step 1 is not the whole story: startStepDelay() adds an escalating
+	-- penalty in whole days once the old man has already visited more than twice.
 	stepDelay = {
-		[1] = { 300, 600 }, -- Old man visit, 12-36 hours
-		[3] = { 300, 600 } -- Sith shadow attack, 1 hour to 12 hours
+		[1] = { 300, 600 }, -- Old man visit, 5-10 minutes (see escalation below)
+		[3] = { 300, 600 } -- Sith shadow attack, 5-10 minutes
 	}
 }
 
@@ -57,6 +63,12 @@ function FsIntro:startStepDelay(pPlayer, step)
 	self:setCurrentStep(pPlayer, step)
 	local stepDelay = getRandomNumber(stepData[1], stepData[2])
 
+	-- Repeat visits are penalised on top of the stepDelay above, in whole days.
+	-- These are hard coded here rather than in stepDelay, so shortening the table
+	-- alone will not speed up a player who has already been visited more than twice:
+	--   visits 1-2 : stepDelay only        (5-10 minutes)
+	--   visit  3   : stepDelay + 1 day
+	--   visit  4+  : stepDelay + (visits * 1 day)  -- 4 days, 5 days, and so on
 	if (step == 1) then
 		local oldManVisits = tonumber(readScreenPlayData(pPlayer, "VillageJediProgression", "FsIntroOldManVisits"))
 
