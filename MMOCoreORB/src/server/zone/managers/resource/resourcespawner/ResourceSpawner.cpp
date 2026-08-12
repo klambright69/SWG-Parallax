@@ -339,9 +339,26 @@ bool ResourceSpawner::writeAllSpawnsToScript() {
 
 			writer->writeLine("		},");
 
+			// The zones this resource is actually spawned on. The spawn map is the
+			// only record of that -- zoneRestriction below is the restriction the
+			// resource was created under, not where it landed, and is empty for
+			// anything unrestricted. External consumers of this dump (resource
+			// trackers, Galaxy Harvester exports) need the real planet list.
+			writer->writeLine("		planets = {");
+			for(int j = 0; j < spawn->getSpawnMapSize(); ++j) {
+				const String& spawnZone = spawn->getSpawnMapZone(j);
+				if(spawnZone != "") {
+					writer->writeLine("			\"" + spawnZone + "\",");
+				}
+			}
+			writer->writeLine("		},");
+
 			writer->writeLine("		zoneRestriction = \"" + spawn->getZoneRestriction() + "\",");
 			writer->writeLine("		surveyToolType = " + String::valueOf(spawn->getSurveyToolType()) + ",");
 			writer->writeLine("		containerCRC = " + String::valueOf(spawn->getContainerCRC()) + ",");
+			// Unix timestamp at which this spawn expires. There is no spawn-time
+			// field on ResourceSpawn, so this is the only temporal data available.
+			writer->writeLine("		despawned = " + String::valueOf(spawn->getDespawned()) + ",");
 
 			writer->writeLine("	},");
 			writer->writeLine("");
