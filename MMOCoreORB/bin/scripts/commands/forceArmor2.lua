@@ -48,6 +48,11 @@ ForceArmor2Command = {
 	--animationCRC = hashCode()
 	clientEffect = "clienteffect/pl_force_armor_self.cef",
 	buffClass = SINGLE_USE_BUFF,
+	-- Force spent per point of damage absorbed. Was 0.3 hard coded in C++;
+	-- lowered here to reduce the running cost of mitigation for every Jedi,
+	-- not just FRS members. The FRS modifiers below discount it further and
+	-- are clamped at zero, so absorbing damage can never generate force.
+	damageAbsorbCostMultiplier = 0.18,
 	frsDarkExtraForceCostModifier = -0.003,
 	frsLightExtraForceCostModifier = -0.003,
 	frsLightBuffModifier = 0.35,

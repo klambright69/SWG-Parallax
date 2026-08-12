@@ -758,6 +758,8 @@ void CommandConfigManager::parseVariableData(String varName, LuaObject &command,
 			jediCommand->setFrsDarkExtraForceCostModifier(Lua::getFloatParameter(L));
 		else if (varName == "frsLightExtraForceCostModifier")
 			jediCommand->setFrsLightExtraForceCostModifier(Lua::getFloatParameter(L));
+		else if (varName == "damageAbsorbCostMultiplier")
+			jediCommand->setDamageAbsorbCostMultiplier(Lua::getFloatParameter(L));
 		else if (varName == "frsLightBuffModifier")
 			jediCommand->setFrsLightBuffModifier(Lua::getFloatParameter(L));
 		else if (varName == "frsDarkBuffModifier")

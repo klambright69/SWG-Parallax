@@ -35,6 +35,10 @@ protected:
 	float frsDarkBuffModifier;
 	float frsLightForcePowerModifier;
 	float frsDarkForcePowerModifier;
+	// Force spent per point of damage absorbed by a mitigation buff (force armor
+	// and friends). Configurable per command so it can be tuned without a rebuild;
+	// 0 means the command supplies its own value in code.
+	float damageAbsorbCostMultiplier;
 
 	uint32 buffCRC;
 	Vector<uint32> overrideableCRCs;
@@ -62,6 +66,7 @@ public:
 		frsDarkBuffModifier = 0;
 		frsLightForcePowerModifier = 0;
 		frsDarkForcePowerModifier = 0;
+		damageAbsorbCostMultiplier = 0;
 	}
 
 	int doQueueCommand(CreatureObject* creature, const uint64& target, const UnicodeString& arguments) const {
@@ -282,7 +287,11 @@ public:
 		if (manipulationMod == 0 || frsModifier == 0)
 			return val;
 
-		return val + ((float)manipulationMod * frsModifier);
+		// Clamp at zero. The FRS modifier is negative (a discount), and without this a
+		// high enough force_manipulation drives the multiplier below zero, making fCost
+		// negative -- and the caller does setForcePower(force - fCost), so a negative
+		// cost ADDS force. Absorbing damage would generate it. Free is the floor.
+		return Math::max(0.f, val + ((float)manipulationMod * frsModifier));
 	}
 
 	void doForceCost(CreatureObject* creature) const {
@@ -335,6 +344,12 @@ public:
 	}
 	void setFrsLightExtraForceCostModifier(float val) {
 		frsLightExtraForceCostModifier = val;
+	}
+	void setDamageAbsorbCostMultiplier(float val) {
+		damageAbsorbCostMultiplier = val;
+	}
+	float getDamageAbsorbCostMultiplier(float fallback) const {
+		return damageAbsorbCostMultiplier > 0.f ? damageAbsorbCostMultiplier : fallback;
 	}
 	void setFrsLightBuffModifier(float val) {
 		frsLightBuffModifier = val;
