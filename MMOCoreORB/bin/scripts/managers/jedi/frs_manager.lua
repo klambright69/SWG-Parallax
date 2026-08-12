@@ -13,12 +13,11 @@ petitionInterval = 30000 -- was 1 day; advances on the next vote status tick
 
 votingInterval = 86400000 -- 1 day
 
--- NOT shortened deliberately. acceptanceInterval is the deadline a winner has to
--- click "Accept Promotion", not a wait before they may do so -- acceptance is
--- available the moment the phase turns to WAITING. When this elapses the promotion
--- is revoked ("your deadline for accepting a promotion has passed") and the player
--- must petition and win a vote again, so shortening it destroys promotions.
-acceptanceInterval = 86400000 -- 1 day
+-- Server tuning: acceptance never expires. The phase gate in handleAcceptPromotionSui
+-- is removed so winners can always accept, but the WAITING phase itself also revoked
+-- promotions when this elapsed ("your deadline for accepting a promotion has passed")
+-- and cleared the winner list. A one year interval keeps that from ever firing.
+acceptanceInterval = 31536000000 -- 1 year; effectively never
 
 maintenanceInterval = 86400000 -- 1 day
 

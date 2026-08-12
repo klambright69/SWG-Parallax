@@ -68,6 +68,7 @@ public:
 	void loadFromLua();
 	void loadSkill(LuaObject* skill);
 	void loadXpLimits();
+	void applyAdditionalSkillModifiers();
 
 	void addAbility(PlayerObject* ghost, const String& abilityName, bool notifyClient = true);
 	void removeAbility(PlayerObject* ghost, const String& abilityName, bool notifyClient = true);

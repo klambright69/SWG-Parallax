@@ -81,6 +81,10 @@ public:
 
 	void verifySkillBoxSkillMods(CreatureObject* creature);
 
+	// Like verifySkillBoxSkillMods, but also grants modifiers the player is missing
+	// entirely rather than only correcting ones already present.
+	void repairSkillBoxSkillMods(CreatureObject* creature);
+
 	void verifyBuffSkillMods(CreatureObject* creature);
 
 	inline int getMinSkill(const uint32 modType) {

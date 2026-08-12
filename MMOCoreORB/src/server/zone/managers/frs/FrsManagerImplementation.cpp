@@ -1,5 +1,6 @@
 #include "server/zone/managers/frs/FrsManager.h"
 #include "server/zone/managers/skill/SkillManager.h"
+#include "server/zone/managers/skill/SkillModManager.h"
 #include "server/zone/ZoneServer.h"
 #include "server/zone/managers/frs/RankMaintenanceTask.h"
 #include "server/zone/managers/frs/VoteStatusTask.h"
@@ -800,6 +801,12 @@ void FrsManagerImplementation::updatePlayerSkills(CreatureObject* player) {
 				skillManager->surrenderSkill(rankSkill, player, true, false);
 		}
 	}
+
+	// awardSkill above returns early for a rank the player already holds, so it never
+	// re-applies that skill's modifiers. Any modifier added to a rank skill after a
+	// player reached it would otherwise never reach them. This reconciles the
+	// SKILLBOX totals against their current skill list, granting what is missing.
+	SkillModManager::instance()->repairSkillBoxSkillMods(player);
 }
 
 void FrsManagerImplementation::promotePlayer(CreatureObject* player) {
@@ -1564,10 +1571,11 @@ void FrsManagerImplementation::handleVotePetitionSui(CreatureObject* player, Sce
 
 	short voteStatus = rankData->getVoteStatus();
 
-	if (voteStatus != PETITIONING) {
-		player->sendSystemMessage("@force_rank:petition_not_open"); // Petitioning for this rank is not currently open.
-		return;
-	}
+	// Server tuning: petitioning is always open. The phase gate that restricted it to
+	// the PETITIONING window is removed; every other eligibility check below still
+	// applies. A player who petitions outside the window simply sits on the list until
+	// the next resolution.
+	(void)voteStatus;
 
 	FrsData* playerData = ghost->getFrsData();
 	int playerRank = playerData->getRank();
@@ -1614,10 +1622,10 @@ void FrsManagerImplementation::handleAcceptPromotionSui(CreatureObject* player, 
 
 	short voteStatus = rankData->getVoteStatus();
 
-	if (voteStatus != WAITING) {
-		player->sendSystemMessage("@force_rank:acceptance_time_expired"); // Time has expired for accepting promotions.
-		return;
-	}
+	// Server tuning: accepting is always open. Winners are still required to be on the
+	// winner list and to have an available seat, but the acceptance window itself no
+	// longer expires them out of a promotion they earned.
+	(void)voteStatus;
 
 	uint64 playerID = player->getObjectID();
 

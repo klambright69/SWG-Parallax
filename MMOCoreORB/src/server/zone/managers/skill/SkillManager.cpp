@@ -160,6 +160,8 @@ void SkillManager::loadClientData() {
 
 	loadXpLimits();
 
+	applyAdditionalSkillModifiers();
+
 	info(true) << "Loaded " << skillMap.size() << " skills and " << abilityMap.size() << " abilities.";
 	info(true) << "Loaded " << droidProgramSizes.size() << " Droid Space Command Sizes.";
 }
@@ -173,6 +175,57 @@ void SkillManager::loadFromLua() {
 	lua->runFile("scripts/skills/serverobjects.lua");
 
 	delete lua;
+}
+
+// Layers extra modifiers from scripts/managers/skill_manager.lua onto skills that
+// are already loaded. Doing it this way rather than redefining the skills in lua
+// means each skill keeps every field from skills.iff and only gains the listed mod,
+// so there is nothing to keep in sync if the client datatable changes.
+void SkillManager::applyAdditionalSkillModifiers() {
+	Lua* lua = new Lua();
+	lua->init();
+	lua->runFile("scripts/managers/skill_manager.lua");
+
+	LuaObject entries = lua->getGlobalObject("additionalSkillModifiers");
+
+	int applied = 0;
+
+	if (entries.isValidTable()) {
+		for (int i = 1; i <= entries.getTableSize(); ++i) {
+			LuaObject entry = entries.getObjectAt(i);
+
+			if (!entry.isValidTable()) {
+				entry.pop();
+				continue;
+			}
+
+			String skillName = entry.getStringField("skill");
+			String modName = entry.getStringField("mod");
+			int value = entry.getIntField("value");
+
+			entry.pop();
+
+			if (skillName.isEmpty() || modName.isEmpty()) {
+				continue;
+			}
+
+			Skill* skill = skillMap.get(skillName.hashCode());
+
+			if (skill == nullptr) {
+				error() << "applyAdditionalSkillModifiers -- unknown skill: " << skillName;
+				continue;
+			}
+
+			skill->skillModifiers.put(modName, value);
+			applied++;
+		}
+	}
+
+	entries.pop();
+
+	delete lua;
+
+	info(true) << "Applied " << applied << " additional skill modifiers.";
 }
 
 void SkillManager::loadSkill(LuaObject* luaSkill) {

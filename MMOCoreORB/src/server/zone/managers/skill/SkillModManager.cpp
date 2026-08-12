@@ -418,6 +418,85 @@ void SkillModManager::verifySkillBoxSkillMods(CreatureObject* creature) {
 	}
 }
 
+// compareMods only adjusts modifiers that already exist in the player's group; any
+// it computes but does not find is logged and dropped. That means a modifier added
+// to a skill definition never reaches players who already hold that skill, since
+// awardSkill returns early for them and only applies mods on a fresh grant.
+//
+// This recomputes the SKILLBOX totals the player's skill list should produce and
+// applies the difference in both directions, so a missing modifier is granted and a
+// stale one is corrected. Setting rather than accumulating keeps it safe to call on
+// every load.
+void SkillModManager::repairSkillBoxSkillMods(CreatureObject* creature) {
+	if (creature == nullptr) {
+		return;
+	}
+
+	Locker locker(creature);
+
+	VectorMap<String, int> expected;
+	expected.setAllowOverwriteInsertPlan();
+	expected.setNullValue(0);
+
+	const SkillList* skillList = creature->getSkillList();
+
+	for (int i = 0; i < skillList->size(); ++i) {
+		Reference<Skill*> skill = skillList->get(i);
+
+		if (skill == nullptr) {
+			continue;
+		}
+
+		auto skillMods = skill->getSkillModifiers();
+
+		for (int j = 0; j < skillMods->size(); ++j) {
+			const String& name = skillMods->elementAt(j).getKey();
+			int value = skillMods->get(name);
+
+			if (expected.contains(name)) {
+				value += expected.get(name);
+			}
+
+			expected.put(name, value);
+		}
+	}
+
+	auto skillModMutex = creature->getSkillModMutex();
+	Locker skillModLocker(skillModMutex);
+
+	SkillModList* skillModList = creature->getSkillModList();
+
+	if (skillModList == nullptr) {
+		return;
+	}
+
+	const SkillModGroup* group = skillModList->getSkillModGroup(SkillModManager::SKILLBOX);
+
+	if (group == nullptr) {
+		return;
+	}
+
+	SkillModGroup current = *group;
+
+	skillModLocker.release();
+
+	for (int i = 0; i < expected.size(); ++i) {
+		const String& key = expected.elementAt(i).getKey();
+		int properValue = expected.get(key);
+		int value = current.contains(key) ? current.get(key) : 0;
+
+		if (value == properValue) {
+			continue;
+		}
+
+		if (value != 0) {
+			creature->removeSkillMod(SkillModManager::SKILLBOX, key, value, false);
+		}
+
+		creature->addSkillMod(SkillModManager::SKILLBOX, key, properValue, true);
+	}
+}
+
 void SkillModManager::verifyBuffSkillMods(CreatureObject* creature) {
 	Locker locker(creature);
 
