@@ -285,13 +285,12 @@ float ArmorObjectImplementation::getTypeValue(int type, float value) const {
 	if (vulnerabilites & type)
 		newValue = value;
 
-	else if (isSpecial(type)) {
-		newValue = specialProtection + value;
-
-		if (newValue > 80)
-			newValue = 80;
-	} else {
-		newValue = baseProtection + value;
+	else {
+		// Special resists are treated exactly like ordinary ones apart from which
+		// protection value they start from. They previously ignored the slice
+		// entirely -- neither the multiplier nor the raised ceiling applied -- so
+		// slicing a piece could not improve its specialty damage type at all.
+		newValue = (isSpecial(type) ? specialProtection : baseProtection) + value;
 		newValue *= effectivenessSlice;
 
 		if(sliced && effectivenessSlice > 1) {
