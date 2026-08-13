@@ -68,6 +68,16 @@ class PlayerCreationManager : public Singleton<PlayerCreationManager>, public Lo
 	 */
 	Vector<String> commonStartingItems;
 
+	/**
+	 * Starting items that depend on the character's species, keyed by species name
+	 * ("wookiee", "ithorian", ...) with "default" covering everything unlisted.
+	 *
+	 * This exists because some wearables are restricted by playerRaces: composite
+	 * armour, for instance, lists neither Wookiees nor Ithorians, so handing it to
+	 * them via commonStartingItems produces items they can never equip.
+	 */
+	VectorMap<String, Vector<String> > speciesStartingItems;
+
 	int startingCash;
 	int startingBank;
 	int skillPoints;
@@ -94,6 +104,18 @@ class PlayerCreationManager : public Singleton<PlayerCreationManager>, public Lo
 	void addHair(CreatureObject* creature, const String& hairTemplate, const String& hairCustomization) const;
 	void addRacialMods(CreatureObject* creature, const String& race, const Vector<String>* startingSkills, const Vector<String>* startingItems, bool equipmentOnly) const;
 	void addStartingItems(CreatureObject* creature, const String& clientTemplate, bool equipmentOnly) const;
+
+	/**
+	 * Reduces a player template such as "object/creature/player/wookiee_male.iff"
+	 * to its species name ("wookiee"), which is how speciesStartingItems is keyed.
+	 */
+	static String getSpeciesKey(const String& clientTemplate);
+
+	/**
+	 * Species-specific starting items for a player template, falling back to the
+	 * "default" list. Returns nullptr when neither is configured.
+	 */
+	const Vector<String>* getSpeciesStartingItems(const String& clientTemplate) const;
 	void addProfessionStartingItems(CreatureObject* creature, const String& profession, const String& clientTemplate, bool equipmentOnly) const;
 	//void generateHologrindProfessions(CreatureObject* creature);
 

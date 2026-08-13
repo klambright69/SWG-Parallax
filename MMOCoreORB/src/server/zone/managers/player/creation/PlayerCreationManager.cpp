@@ -308,6 +308,46 @@ void PlayerCreationManager::loadLuaStartingItems(Lua* lua) {
 			commonStartingItems.add(commonStartingItemsLuaObject.getStringAt(itemNumber));
 		}
 		commonStartingItemsLuaObject.pop();
+
+		// Read species specific starting items. The table is keyed by species name
+		// with a "default" entry for everything not named explicitly, so adding a
+		// species is a lua-only change.
+		LuaObject speciesItemsLuaObject = lua->getGlobalObject("speciesSpecificItems");
+
+		if (speciesItemsLuaObject.isValidTable()) {
+			lua_State* L = speciesItemsLuaObject.getLuaState();
+
+			lua_pushnil(L);
+
+			while (lua_next(L, -2) != 0) {
+				if (lua_isstring(L, -2) && lua_istable(L, -1)) {
+					String species = lua_tostring(L, -2);
+
+					LuaObject speciesList(L);
+					Vector<String> items;
+
+					for (int itemNumber = 1; itemNumber <= speciesList.getTableSize(); itemNumber++) {
+						items.add(speciesList.getStringAt(itemNumber));
+					}
+
+					speciesStartingItems.put(species, items);
+
+					// LuaObject::pop removes the value, which is exactly what
+					// lua_next needs so the key stays on the stack for the next
+					// iteration.
+					speciesList.pop();
+				} else {
+					lua_pop(L, 1);
+				}
+			}
+
+			for (int i = 0; i < speciesStartingItems.size(); ++i) {
+				info(true) << "loaded " << speciesStartingItems.elementAt(i).getValue().size()
+					<< " species starting items for '" << speciesStartingItems.elementAt(i).getKey() << "'";
+			}
+		}
+
+		speciesItemsLuaObject.pop();
 	} catch (Exception& e) {
 		error("Failed to load starting items.");
 		error(e.getMessage());
@@ -688,6 +728,40 @@ bool PlayerCreationManager::validateCharacterName(const String& characterName) c
 	return true;
 }
 
+String PlayerCreationManager::getSpeciesKey(const String& clientTemplate) {
+	// "object/creature/player/wookiee_male.iff" -> "wookiee"
+	String name = clientTemplate;
+
+	int slash = name.lastIndexOf('/');
+
+	if (slash != -1)
+		name = name.subString(slash + 1);
+
+	if (name.endsWith(".iff"))
+		name = name.subString(0, name.length() - 4);
+
+	if (name.endsWith("_male"))
+		name = name.subString(0, name.length() - 5);
+	else if (name.endsWith("_female"))
+		name = name.subString(0, name.length() - 7);
+
+	return name;
+}
+
+const Vector<String>* PlayerCreationManager::getSpeciesStartingItems(const String& clientTemplate) const {
+	const String species = getSpeciesKey(clientTemplate);
+
+	int index = speciesStartingItems.find(species);
+
+	if (index == -1)
+		index = speciesStartingItems.find(String("default"));
+
+	if (index == -1)
+		return nullptr;
+
+	return &speciesStartingItems.elementAt(index).getValue();
+}
+
 void PlayerCreationManager::addStartingItems(CreatureObject* creature,
 		const String& clientTemplate, bool equipmentOnly) const {
 	const SortedVector < String >* items = nullptr;
@@ -731,6 +805,21 @@ void PlayerCreationManager::addStartingItems(CreatureObject* creature,
 			if (item != nullptr) {
 				if (!inventory->transferObject(item, -1, false)) {
 					item->destroyObjectFromDatabase(true);
+				}
+			}
+		}
+
+		//Add species specific starting items.
+		const Vector<String>* speciesItems = getSpeciesStartingItems(clientTemplate);
+
+		if (speciesItems != nullptr) {
+			for (int itemNumber = 0; itemNumber < speciesItems->size(); itemNumber++) {
+				ManagedReference<SceneObject*> item = zoneServer->createObject(
+						speciesItems->get(itemNumber).hashCode(), 1);
+				if (item != nullptr) {
+					if (!inventory->transferObject(item, -1, false)) {
+						item->destroyObjectFromDatabase(true);
+					}
 				}
 			}
 		}
@@ -925,6 +1014,24 @@ void PlayerCreationManager::addStartingItemsInto(CreatureObject* creature,
 			}
 		} else if (item != nullptr) {
 			item->destroyObjectFromDatabase(true);
+		}
+	}
+
+	//Add species specific starting items.
+	const Vector<String>* speciesItems =
+			getSpeciesStartingItems(playerTemplate->getFullTemplateString());
+
+	if (speciesItems != nullptr) {
+		for (int itemNumber = 0; itemNumber < speciesItems->size(); itemNumber++) {
+			ManagedReference<SceneObject*> item = zoneServer->createObject(
+					speciesItems->get(itemNumber).hashCode(), 1);
+			if (item != nullptr && container != nullptr && !item->isWeaponObject()) {
+				if (!container->transferObject(item, -1, true)) {
+					item->destroyObjectFromDatabase(true);
+				}
+			} else if (item != nullptr) {
+				item->destroyObjectFromDatabase(true);
+			}
 		}
 	}
 
