@@ -6,8 +6,18 @@ rancor_tooth = {
 	customObjectName = "",
 	directObjectTemplate = "object/tangible/component/weapon/rancor_tooth.iff",
 	craftingValues = {
-		{"mindamage",5,20,0},
-		{"maxdamage",50,100,0},
+		-- Damage caps raised to 200, and mindamage now uses the same 50 floor as
+		-- maxdamage so the two roll from an identical band at every rarity tier.
+		-- The floor matters as much as the ceiling: LootValues::setModifierValue
+		-- maps an exceptional/legendary roll into [min*(P-2)+max, min*(P-1)+max],
+		-- so a mismatched floor made mindamage scale far below maxdamage.
+		--
+		-- These are component bonuses applied to the crafted weapon, and min/max
+		-- still roll independently, so a tooth can roll min above max. That is
+		-- handled rather than broken: CombatManager guards the roll with
+		-- "if (diff > 0)", so such a weapon simply deals its minimum every hit.
+		{"mindamage",50,200,0},
+		{"maxdamage",50,200,0},
 		{"attackspeed",1.0,-0.5,2},
 		{"woundchance",10,20,0},
 		{"hitpoints",50,100,0, true},
