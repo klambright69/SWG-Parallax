@@ -42,6 +42,13 @@
 
 
 object_tangible_wearables_base_base_cloak_hooded = object_tangible_wearables_base_shared_base_cloak_hooded:new {
+	-- A Cloak is worn in the game's dedicated "cloak" slot rather than over the
+	-- chest, biceps and bracers its client arrangement claims. That lets it layer
+	-- over a Jedi robe (which no longer claims "cloak") and keeps it clear of
+	-- "back", so it never fights a backpack or a sash. The hooded variant drops its
+	-- "hat" claim for the same reason, so headgear still works with the hood up.
+	arrangementDescriptorSlots = { "cloak" },
+
 
 }
 

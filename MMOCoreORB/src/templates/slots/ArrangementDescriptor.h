@@ -53,6 +53,47 @@ public:
 		arrangementSlots.clone(copyVec);
 	}
 
+	/**
+	 * Returns a copy of this descriptor with the named slots dropped from every
+	 * arrangement.
+	 *
+	 * Descriptors are cached by filename in TemplateManager and therefore shared by
+	 * every object template that names the same arrangement file, so a template that
+	 * wants to occupy fewer slots has to filter a copy instead of editing this one.
+	 */
+	/**
+	 * Builds a descriptor with a single arrangement occupying exactly the given
+	 * slots, for templates that need to claim something other than what their
+	 * client arrangement file says.
+	 */
+	static Reference<ArrangementDescriptor*> fromSlots(const Vector<String>& slots) {
+		Reference<ArrangementDescriptor*> descriptor = new ArrangementDescriptor();
+
+		descriptor->arrangementSlots.add(slots);
+
+		return descriptor;
+	}
+
+	Reference<ArrangementDescriptor*> cloneWithoutSlots(const Vector<String>& removedSlots) const {
+		Reference<ArrangementDescriptor*> copy = new ArrangementDescriptor();
+
+		for (int i = 0; i < arrangementSlots.size(); ++i) {
+			const Vector<String>& slots = arrangementSlots.get(i);
+			Vector<String> keptSlots;
+
+			for (int j = 0; j < slots.size(); ++j) {
+				const String& slot = slots.get(j);
+
+				if (!removedSlots.contains(slot))
+					keptSlots.add(slot);
+			}
+
+			copy->arrangementSlots.add(keptSlots);
+		}
+
+		return copy;
+	}
+
 	const Vector< Vector<String> >& getArrangementSlots() const {
 		return arrangementSlots;
 	}

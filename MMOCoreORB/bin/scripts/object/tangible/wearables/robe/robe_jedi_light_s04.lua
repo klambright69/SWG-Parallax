@@ -42,6 +42,15 @@
 
 
 object_tangible_wearables_robe_robe_jedi_light_s04 = object_tangible_wearables_robe_shared_robe_jedi_light_s04:new {
+	-- Jedi robes are the only wearables whose client arrangement claims "back",
+	-- "shoes" and the dedicated "cloak" slot on top of the body slots. Releasing
+	-- those three lets a Jedi wear a backpack or sash (both "back"), boots
+	-- ("shoes") and a Cloak ("cloak", see robe_s05) with a robe on. The chest,
+	-- pants, bicep and bracer slots stay claimed, so a robe still conflicts with
+	-- armour and other body clothing the way it should. Gloves and headgear were
+	-- never in this arrangement and needed no change.
+	arrangementDescriptorRemoveSlots = { "back", "shoes", "cloak" },
+
 	playerRaces = { "object/creature/player/bothan_male.iff",
 		"object/creature/player/bothan_female.iff",
 		"object/creature/player/human_male.iff",

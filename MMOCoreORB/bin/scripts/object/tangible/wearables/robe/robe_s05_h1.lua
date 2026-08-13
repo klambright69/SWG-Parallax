@@ -42,6 +42,13 @@
 
 
 object_tangible_wearables_robe_robe_s05_h1 = object_tangible_wearables_robe_shared_robe_s05_h1:new {
+	-- A Cloak is worn in the game's dedicated "cloak" slot rather than over the
+	-- chest, biceps and bracers its client arrangement claims. That lets it layer
+	-- over a Jedi robe (which no longer claims "cloak") and keeps it clear of
+	-- "back", so it never fights a backpack or a sash. The hooded variant drops its
+	-- "hat" claim for the same reason, so headgear still works with the hood up.
+	arrangementDescriptorSlots = { "cloak" },
+
 	playerRaces = { "object/creature/player/bothan_male.iff",
 				"object/creature/player/bothan_female.iff",
 				"object/creature/player/human_male.iff",

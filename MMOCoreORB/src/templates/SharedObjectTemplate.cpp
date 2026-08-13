@@ -77,6 +77,43 @@ void SharedObjectTemplate::parseVariableData(const String& varName, LuaObject* t
 		String arrangementDescriptorFilename = Lua::getStringParameter(state);
 
 		arrangementDescriptors = templateManager->getArrangementDescriptor(arrangementDescriptorFilename);
+	} else if (varName == "arrangementDescriptorSlots") {
+		// Replaces the arrangement inherited from the client IFF with exactly these
+		// slots. Use this when a wearable should occupy a different set of slots
+		// entirely; use arrangementDescriptorRemoveSlots to only subtract from it.
+		LuaObject slotList(state);
+
+		if (slotList.isValidTable()) {
+			Vector<String> slots;
+
+			for (int i = 1; i <= slotList.getTableSize(); ++i) {
+				slots.add(slotList.getStringAt(i));
+			}
+
+			if (slots.size() > 0)
+				arrangementDescriptors = ArrangementDescriptor::fromSlots(slots);
+		}
+
+		slotList.pop();
+	} else if (varName == "arrangementDescriptorRemoveSlots") {
+		// Drops slots from the arrangement inherited from the client IFF so a
+		// wearable stops conflicting with items in those slots. TemplateManager::
+		// addTemplate reads the client IFF before this lua data, so the descriptor
+		// to filter is already in place by the time we get here.
+		LuaObject removedSlots(state);
+
+		if (removedSlots.isValidTable() && arrangementDescriptors != nullptr) {
+			Vector<String> slots;
+
+			for (int i = 1; i <= removedSlots.getTableSize(); ++i) {
+				slots.add(removedSlots.getStringAt(i));
+			}
+
+			if (slots.size() > 0)
+				arrangementDescriptors = arrangementDescriptors->cloneWithoutSlots(slots);
+		}
+
+		removedSlots.pop();
 	} else if (varName == "appearanceFilename") {
 		appearanceFilename = Lua::getStringParameter(state);
 		appearanceTemplate = nullptr;
