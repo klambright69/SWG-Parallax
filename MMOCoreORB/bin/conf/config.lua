@@ -242,7 +242,11 @@ Core3 = {
 	UnloadContainers = 1, -- Whether to unload container contents from RAM after the container hasn't been accessed for a time
 
 	------Server Config------
-	CharacterBuilderEnabled = "true",
+	-- Character Builder ("Blue Frog") terminals. False removes all 28 of them from
+	-- every planet: PlanetManager skips the planetObjects entries at load, and the
+	-- terminal itself refuses both its radial and its SUI, so any copy placed by
+	-- other means is inert too.
+	CharacterBuilderEnabled = "false",
 	AutoReg = 1,
 
 	------Player Manager Config------
