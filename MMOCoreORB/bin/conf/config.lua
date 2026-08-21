@@ -242,6 +242,51 @@ Core3 = {
 	UnloadContainers = 1, -- Whether to unload container contents from RAM after the container hasn't been accessed for a time
 
 	------Server Config------
+	-- Everyone who damaged a creature earns the full experience award for the kill
+	-- instead of a slice proportional to their share of the damage. A player who
+	-- lands a few hits earns the same as one who did most of the work.
+	--
+	-- Only affects how the award is divided between attackers. The per-level cap
+	-- (playerLevel * 300), the group bonus and the GCW bonus all still apply, and
+	-- a player still earns nothing from a creature they never touched.
+	FullExperienceCredit = "true",
+
+	AiAgent = {
+		-- How long a fleeing creature actually runs, in milliseconds. This is
+		-- separate from the per-behaviour "delay" in scripts/ai/default.lua, which
+		-- remains the cooldown controlling how soon that creature may flee again
+		-- (Flee = 60s, RunAway = 30s). Before this existed the run time was derived
+		-- from that same delay and worked out to delay-minus-6-seconds.
+		FleeRunDurationMs = 10000,
+	},
+
+	-- The "Survey Event" minigame that interrupts sampling with a popup offering to
+	-- focus the device on a concentrated node. False skips the popup and takes a
+	-- normal sample instead; the code behind it is left intact, so setting this
+	-- back to true restores it without a rebuild.
+	SurveyMinigameEnabled = "false",
+
+	-- Planets on which any structure may be built, ignoring the per-template
+	-- allowedZones list. Applies to every structure placed from a deed: player
+	-- houses, city buildings, faction headquarters and the rest.
+	--
+	-- These seven are the union of every structure template's own allowedZones, so
+	-- the list adds no planet that refused structures before -- dathomir, endor and
+	-- yavin4 permit none and stay that way. It only removes the restriction on
+	-- which STYLE goes where, so a Naboo house can be built on Tatooine and a
+	-- Corellian city hall on Naboo.
+	--
+	-- Widening only: a template's own allowedZones is checked first, so a planet a
+	-- structure already permitted stays permitted. An empty list restores stock
+	-- behaviour.
+	StructurePlacementZones = {"corellia", "dantooine", "lok", "naboo", "rori", "talus", "tatooine"},
+
+	-- Maximum units a factory run may pack into a single crate, overriding the
+	-- per-schematic factoryCrateSize (which ships as 1 to 100). 0 keeps each
+	-- schematic's own value. Schematics with a size of 1 still produce loose
+	-- items rather than crates regardless of this setting.
+	FactoryCrateSize = 1000,
+
 	-- Character Builder ("Blue Frog") terminals. False removes all 28 of them from
 	-- every planet: PlanetManager skips the planetObjects entries at load, and the
 	-- terminal itself refuses both its radial and its SUI, so any copy placed by
