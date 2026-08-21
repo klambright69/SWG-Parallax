@@ -128,6 +128,7 @@ includeFile("dungeon/geonosian_lab/conversations/biogenicScientistGeneric02Convo
 includeFile("dungeon/geonosian_lab/conversations/biogenicScientistHumanConvoHandler.lua")
 includeFile("dungeon/geonosian_lab/conversations/biogenicSecurityTechConvoHandler.lua")
 includeFile("dungeon/geonosian_lab/acklayInstance.lua")
+includeFile("diagnostics/bankCheck.lua")
 includeFile("dungeon/warren/warren.lua")
 includeFile("dungeon/warren/warrenComponents.lua")
 includeFile("dungeon/warren/convos/mirla_convo_handler.lua")
