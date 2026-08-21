@@ -10,6 +10,7 @@
 #include "server/zone/managers/director/DirectorManager.h"
 #include "server/zone/objects/tangible/component/dna/DnaComponent.h"
 #include "server/zone/managers/crafting/CraftingManager.h"
+#include "server/zone/objects/tangible/terminal/characterbuilder/CharacterBuilderAccess.h"
 
 void CharacterBuilderTerminalImplementation::loadTemplateData(SharedObjectTemplate* templateData) {
 	TangibleObjectImplementation::loadTemplateData(templateData);
@@ -29,7 +30,7 @@ void CharacterBuilderTerminalImplementation::initializeTransientMembers() {
 }
 
 int CharacterBuilderTerminalImplementation::handleObjectMenuSelect(CreatureObject* player, byte selectedID) {
-	if (!ConfigManager::instance()->getCharacterBuilderEnabled())
+	if (!canUseCharacterBuilder(player))
 		return 1;
 
 	debug() << "entering start terminal radial call";
@@ -43,7 +44,7 @@ int CharacterBuilderTerminalImplementation::handleObjectMenuSelect(CreatureObjec
 }
 
 void CharacterBuilderTerminalImplementation::sendInitialChoices(CreatureObject* player) {
-	if (!ConfigManager::instance()->getCharacterBuilderEnabled())
+	if (!canUseCharacterBuilder(player))
 		return;
 
 	debug() << "entering sendInitialChoices";

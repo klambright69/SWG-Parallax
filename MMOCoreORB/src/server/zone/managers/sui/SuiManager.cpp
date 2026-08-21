@@ -9,6 +9,7 @@
 #include "server/zone/objects/player/sui/SuiWindowType.h"
 #include "server/zone/objects/player/sui/banktransferbox/SuiBankTransferBox.h"
 #include "server/zone/objects/player/sui/characterbuilderbox/SuiCharacterBuilderBox.h"
+#include "server/zone/objects/tangible/terminal/characterbuilder/CharacterBuilderAccess.h"
 #include "server/zone/objects/player/sui/transferbox/SuiTransferBox.h"
 #include "server/zone/objects/creature/commands/UnconsentCommand.h"
 #include "server/zone/managers/skill/SkillManager.h"
@@ -202,7 +203,7 @@ void SuiManager::handleFishingAction(CreatureObject* player, SuiBox* suiBox, uin
 }
 
 void SuiManager::handleCharacterBuilderSelectItem(CreatureObject* player, SuiBox* suiBox, uint32 cancel, Vector<UnicodeString>* args) {
-	if (!ConfigManager::instance()->getCharacterBuilderEnabled())
+	if (!canUseCharacterBuilder(player))
 		return;
 
 	ZoneServer* zserv = player->getZoneServer();
