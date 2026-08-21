@@ -10,6 +10,7 @@
 
 #include "CombatQueueCommand.h"
 #include "server/zone/objects/group/GroupObject.h"
+#include "server/zone/objects/player/PlayerObject.h"
 
 class SquadLeaderCommand : public CombatQueueCommand {
 protected:
@@ -17,6 +18,12 @@ protected:
 	uint32 actionCRC;
 
 public:
+	// Squad leader buffs are otherwise unbounded -- a group member anywhere on the
+	// same planet receives them. A member carrying a GCW or PvP TEF has to be this
+	// close to the leader instead, so a flagged fight cannot be buffed from across
+	// the planet by a leader who is not exposed to it.
+	static constexpr float TEFBUFFRANGE = 128.f;
+
 
 	SquadLeaderCommand(const String& name, ZoneProcessServer* server) : CombatQueueCommand(name, server) {
 		combatSpam = "";
@@ -91,6 +98,20 @@ public:
 
 		if (target->getParentRecursively(SceneObjectType::BUILDING) != leader->getParentRecursively(SceneObjectType::BUILDING))
 			return false;
+
+		// A flagged member only benefits while near the leader. The flag is read
+		// from targetCreo, which is the owning player for a pet, but the distance
+		// is measured to whatever actually receives the buff.
+		//
+		// hasPvpTef() already covers the GCW timestamp as well as bounty hunter and
+		// pvp-area flags; hasGcwTef() is named explicitly so the intent survives any
+		// upstream change to what hasPvpTef() folds in.
+		PlayerObject* targetGhost = targetCreo->getPlayerObject();
+
+		if (targetGhost != nullptr && (targetGhost->hasPvpTef() || targetGhost->hasGcwTef())) {
+			if (!leader->isInRange(target, TEFBUFFRANGE))
+				return false;
+		}
 
 		return true;
 	}
