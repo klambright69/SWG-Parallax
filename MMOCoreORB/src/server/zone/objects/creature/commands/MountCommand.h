@@ -94,15 +94,27 @@ public:
 
 		vehicle->setState(CreatureState::MOUNTEDCREATURE);
 
+		// RIDINGMOUNT is set before the rider is parented to the mount, not after.
+		//
+		// The client chooses its animation set from posture, locomotion and the
+		// weapon being held. Attaching the rider first left a window in which the
+		// client saw a player parented to a mount but not yet flagged as riding,
+		// and a player holding a weapon could latch onto that weapon's standing
+		// animations instead of the riding pose.
+		//
+		// If the transfer fails the state is rolled back, mirroring how the
+		// vehicle's own MOUNTEDCREATURE flag is cleared below.
+		creature->setState(CreatureState::RIDINGMOUNT);
+
 		if (!vehicle->transferObject(creature, PlayerArrangement::RIDER, true)) {
 			vehicle->error("could not add creature");
 			vehicle->clearState(CreatureState::MOUNTEDCREATURE);
+			creature->clearState(CreatureState::RIDINGMOUNT);
 
 			return GENERALERROR;
 		}
 
 		creature->synchronizeCloseObjects();
-		creature->setState(CreatureState::RIDINGMOUNT);
 
 		creature->updateCooldownTimer("mount_dismount", 2000);
 
