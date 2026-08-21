@@ -17,6 +17,7 @@
 #include "server/zone/objects/player/sessions/survey/sui/SurveyCMinigameSuiCallback.h"
 #include "server/zone/managers/resource/resourcespawner/SampleTask.h"
 #include "server/zone/managers/resource/resourcespawner/SurveyTask.h"
+#include "conf/ConfigManager.h"
 #include "server/zone/managers/resource/resourcespawner/SampleResultsTask.h"
 
 int SurveySessionImplementation::initializeSession(SurveyTool* tool) {
@@ -228,7 +229,18 @@ void SurveySessionImplementation::startSample(const String& resname) {
 	message.setTO(lastResourceSampleName);
 	surveyer->sendSystemMessage(message);
 
-	if (!doGamble && richSampleLocation.getPosition() == Vector3(0, 0, 0) && System::random(50) == 7) {
+	// The "Survey Event" minigame -- the popup offering to focus the device on a
+	// concentrated node -- is gated behind Core3.SurveyMinigameEnabled. Turning it
+	// off makes sampling fall straight through to the else branch below and take a
+	// normal sample, exactly as it does when the 1-in-51 roll fails.
+	//
+	// Nothing is removed: surveyCnodeMinigameSui, surveyGnodeMinigameSui, both
+	// SUI callbacks and the gamble handling in ResourceSpawner all remain intact
+	// and reachable, so flipping the config back restores the feature with no code
+	// change. Defaults to enabled so stock behaviour is unchanged without config.
+	bool minigameEnabled = ConfigManager::instance()->getBool("Core3.SurveyMinigameEnabled", true);
+
+	if (minigameEnabled && !doGamble && richSampleLocation.getPosition() == Vector3(0, 0, 0) && System::random(50) == 7) {
 
 		if (ghost->hasSuiBoxWindowType(SuiWindowType::SURVEY_TOOL_CONCENTRATED_MINIGAME)) {
 			ghost->removeSuiBoxType(SuiWindowType::SURVEY_TOOL_CONCENTRATED_MINIGAME);
