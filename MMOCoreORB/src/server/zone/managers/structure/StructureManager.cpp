@@ -309,7 +309,24 @@ int StructureManager::placeStructureFromDeed(CreatureObject* creature, Structure
 	Reference<SharedStructureObjectTemplate*> serverTemplate = dynamic_cast<SharedStructureObjectTemplate*>(templateManager->getTemplate(serverTemplatePath.hashCode()));
 
 	// Check to see if this zone allows this structure.
-	if (serverTemplate == nullptr || !serverTemplate->isAllowedZone(zone->getZoneName())) {
+	//
+	// A structure whose own template rejects this planet is given a second chance
+	// against Core3.StructurePlacementZones, so any structure style may be built on
+	// any planet in that list -- a Naboo house on Tatooine, a Corellian city hall on
+	// Naboo. Leaving the list empty restores the stock per-template behaviour.
+	//
+	// This only ever widens: the template's own allowedZones is consulted first, so
+	// a planet a structure already permitted stays permitted even when it is absent
+	// from the list.
+	bool allowedZone = serverTemplate != nullptr && serverTemplate->isAllowedZone(zone->getZoneName());
+
+	if (serverTemplate != nullptr && !allowedZone) {
+		const SortedVector<String>& placementZones = ConfigManager::instance()->getSortedStringVector("Core3.StructurePlacementZones");
+
+		allowedZone = placementZones.contains(zone->getZoneName());
+	}
+
+	if (!allowedZone) {
 		creature->sendSystemMessage("@player_structure:wrong_planet"); // That deed cannot be used on this planet.
 		return 1;
 	}
@@ -1061,7 +1078,13 @@ void StructureManager::reportStructureStatus(CreatureObject* creature, Structure
 			}
 		}
 
-		status->addMenuItem("@player_structure:items_in_building_prompt " + String::valueOf(building->getCurrentNumberOfPlayerItems())); // Number of Items in Building:
+		// "Number of Items in Building: 42 / 400". The client has no string for the
+		// limit, so it is appended to the existing localised prompt rather than
+		// inventing an untranslated label. The maximum is lots * 100, capped at
+		// MAXPLAYERITEMS, or a flat 250 for civic structures.
+		status->addMenuItem("@player_structure:items_in_building_prompt "
+			+ String::valueOf(building->getCurrentNumberOfPlayerItems())
+			+ " / " + String::valueOf(building->getMaximumNumberOfPlayerItems())); // Number of Items in Building:
 
 #if ENABLE_STRUCTURE_JSON_EXPORT
 		if (creature->hasSkill("admin_base")) {
