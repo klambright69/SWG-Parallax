@@ -323,6 +323,16 @@ public:
 	}
 
 	/**
+	 * Overrides the skill point cost loaded from datatables/skill/skills.iff.
+	 *
+	 * Used by SkillManager::applySkillPointCostOverrides() so a server can make a
+	 * profession free without shipping a modified client datatable.
+	 */
+	inline void setSkillPointsRequired(int points) {
+		pointsRequired = points;
+	}
+
+	/**
 	 * Returns the species required for the skill.
 	 * @return the species required for the skill.
 	 */

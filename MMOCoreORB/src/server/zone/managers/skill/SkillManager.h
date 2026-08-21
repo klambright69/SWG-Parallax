@@ -69,6 +69,13 @@ public:
 	void loadSkill(LuaObject* skill);
 	void loadXpLimits();
 	void applyAdditionalSkillModifiers();
+	void applySkillPointCostOverrides();
+
+	/**
+	 * Re-credits skill points a character overpaid under a previous cost table.
+	 * Safe to call on every login: it only ever gives points back.
+	 */
+	void repairSkillPoints(CreatureObject* creature);
 
 	void addAbility(PlayerObject* ghost, const String& abilityName, bool notifyClient = true);
 	void removeAbility(PlayerObject* ghost, const String& abilityName, bool notifyClient = true);

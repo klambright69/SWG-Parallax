@@ -1709,6 +1709,11 @@ void PlayerObjectImplementation::notifyOnline() {
 
 	resetSessionStats(true);
 
+	// Credit back any skill points overpaid under an older cost table. Only ever
+	// adds points, so it is harmless to run on every login and becomes a no-op
+	// once a character is already correct.
+	SkillManager::instance()->repairSkillPoints(playerCreature);
+
 #ifdef WITH_SWGREALMS_API
 	auto client = playerCreature->getClient();
 

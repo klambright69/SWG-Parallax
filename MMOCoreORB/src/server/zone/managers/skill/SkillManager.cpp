@@ -15,6 +15,7 @@
 #include "server/zone/managers/jedi/JediManager.h"
 #include "templates/manager/TemplateManager.h"
 #include "templates/datatables/DataTableIff.h"
+#include "server/zone/managers/player/creation/PlayerCreationManager.h"
 #include "templates/datatables/DataTableRow.h"
 #include "server/zone/managers/crafting/schematicmap/SchematicMap.h"
 #include "server/zone/packets/creature/CreatureObjectDeltaMessage4.h"
@@ -162,6 +163,8 @@ void SkillManager::loadClientData() {
 
 	applyAdditionalSkillModifiers();
 
+	applySkillPointCostOverrides();
+
 	info(true) << "Loaded " << skillMap.size() << " skills and " << abilityMap.size() << " abilities.";
 	info(true) << "Loaded " << droidProgramSizes.size() << " Droid Space Command Sizes.";
 }
@@ -226,6 +229,69 @@ void SkillManager::applyAdditionalSkillModifiers() {
 	delete lua;
 
 	info(true) << "Applied " << applied << " additional skill modifiers.";
+}
+
+// Forces the skill point cost of whole skill trees to a fixed value, listed in
+// scripts/managers/skill_manager.lua as zeroCostSkillTrees. Matching is by name
+// prefix so a tree is covered without naming each of its boxes, and the cost is
+// overridden after skills.iff has been read, leaving every other field intact.
+//
+// NOTE: this changes what future awards and surrenders charge and refund. A
+// character that already paid for these boxes keeps the points spent until it
+// surrenders and re-learns them -- the running total lives on the player, not on
+// the skill.
+void SkillManager::applySkillPointCostOverrides() {
+	Lua* lua = new Lua();
+	lua->init();
+	lua->runFile("scripts/managers/skill_manager.lua");
+
+	LuaObject trees = lua->getGlobalObject("zeroCostSkillTrees");
+
+	Vector<String> prefixes;
+
+	if (trees.isValidTable()) {
+		for (int i = 1; i <= trees.getTableSize(); ++i) {
+			String prefix = trees.getStringAt(i);
+
+			if (!prefix.isEmpty())
+				prefixes.add(prefix);
+		}
+	}
+
+	trees.pop();
+
+	delete lua;
+
+	if (prefixes.size() == 0) {
+		return;
+	}
+
+	int changed = 0;
+	int reclaimed = 0;
+
+	// skillMap is a HashTable keyed by name hash, so it must be walked with an
+	// iterator -- get(i) would treat i as a hash key and silently match nothing.
+	HashTableIterator<uint32, Reference<Skill*> > iterator = skillMap.iterator();
+
+	while (iterator.hasNext()) {
+		Skill* skill = iterator.getNextValue();
+
+		if (skill == nullptr || skill->getSkillPointsRequired() == 0)
+			continue;
+
+		const String& name = skill->getSkillName();
+
+		for (int j = 0; j < prefixes.size(); ++j) {
+			if (name.beginsWith(prefixes.get(j))) {
+				reclaimed += skill->getSkillPointsRequired();
+				skill->setSkillPointsRequired(0);
+				changed++;
+				break;
+			}
+		}
+	}
+
+	info(true) << "Zeroed the skill point cost of " << changed << " skills (" << reclaimed << " points) across " << prefixes.size() << " trees.";
 }
 
 void SkillManager::loadSkill(LuaObject* luaSkill) {
@@ -1059,4 +1125,74 @@ void SkillManager::getPlayerDroidCommands(PlayerObject* ghost, Vector<String>& p
 		if (ghost->hasAbility(droidCommands.get(i)))
 			playerDroidCommands.add(droidCommands.get(i));
 	}
+}
+
+// Re-credits skill points a character overpaid under an earlier cost table.
+//
+// Skill point balance is a running total on the player -- awarding a box
+// subtracts its cost and surrendering adds it back -- so lowering a cost in
+// applySkillPointCostOverrides only affects future transactions. A character who
+// already trained those boxes stays down the points it paid at the old price.
+//
+// This recomputes what the balance should be from the CURRENT cost table and
+// credits the shortfall.
+//
+// Deliberately one-directional. A naive recompute would also claw points back,
+// which would silently strip any bonus granted from outside the skill system
+// (quest rewards, veteran rewards, staff grants). If a character already has at
+// least the expected balance it is left completely alone.
+void SkillManager::repairSkillPoints(CreatureObject* creature) {
+	if (creature == nullptr) {
+		return;
+	}
+
+	PlayerObject* ghost = creature->getPlayerObject();
+
+	if (ghost == nullptr) {
+		return;
+	}
+
+	int startingPoints = PlayerCreationManager::instance()->getStartingSkillPoints();
+
+	if (startingPoints <= 0) {
+		return;
+	}
+
+	const SkillList* skills = creature->getSkillList();
+
+	if (skills == nullptr) {
+		return;
+	}
+
+	int spent = 0;
+
+	for (int i = 0; i < skills->size(); ++i) {
+		const Skill* skill = skills->get(i);
+
+		if (skill != nullptr) {
+			spent += skill->getSkillPointsRequired();
+		}
+	}
+
+	int expected = startingPoints - spent;
+	int current = ghost->getSkillPoints();
+
+	if (current >= expected) {
+		return;
+	}
+
+	int credited = expected - current;
+
+	// Only the ghost is written, and notifyOnline already holds it locked, so no
+	// further locking is taken here.
+	ghost->setSkillPoints(expected);
+
+	StringBuffer msg;
+	msg << "Skill point costs have changed. " << credited << " skill point"
+		<< (credited == 1 ? " has" : "s have") << " been returned to you.";
+
+	creature->sendSystemMessage(msg.toString());
+
+	info(true) << "repairSkillPoints -- credited " << credited << " points to "
+		<< creature->getFirstName() << " (" << current << " -> " << expected << ")";
 }

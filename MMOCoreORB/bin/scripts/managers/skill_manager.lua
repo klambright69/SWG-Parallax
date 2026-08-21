@@ -23,3 +23,19 @@ additionalSkillModifiers = {
 	{ skill = "force_rank_dark_rank_08",  mod = "jedi_force_power_regen", value = 5 },
 	{ skill = "force_rank_dark_rank_10",  mod = "jedi_force_power_regen", value = 5 },
 }
+
+-- Skill trees whose boxes cost no skill points. Matched by name prefix, so each
+-- entry covers every box in that tree without listing them individually.
+--
+-- Applied by SkillManager::applySkillPointCostOverrides() after skills.iff is
+-- read, so the cost is the only field changed -- prerequisites, XP costs, money
+-- costs and granted mods all stay as the client datatable defines them.
+--
+-- social_politician already costs 0 in the stock datatable; it is listed anyway
+-- so the intent is explicit and survives a datatable change.
+zeroCostSkillTrees = {
+	"social_imagedesigner",
+	"social_politician",
+	"crafting_merchant",
+	"force_sensitive",
+}

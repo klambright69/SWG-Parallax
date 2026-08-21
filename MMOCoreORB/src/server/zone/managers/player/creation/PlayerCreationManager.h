@@ -116,6 +116,18 @@ class PlayerCreationManager : public Singleton<PlayerCreationManager>, public Lo
 	 * "default" list. Returns nullptr when neither is configured.
 	 */
 	const Vector<String>* getSpeciesStartingItems(const String& clientTemplate) const;
+
+public:
+	/**
+	 * Skill points a character is created with, from scripts/managers/
+	 * player_creation_manager.lua. Used by SkillManager to work out how many
+	 * points a character should have left.
+	 */
+	inline int getStartingSkillPoints() const {
+		return skillPoints;
+	}
+
+private:
 	void addProfessionStartingItems(CreatureObject* creature, const String& profession, const String& clientTemplate, bool equipmentOnly) const;
 	//void generateHologrindProfessions(CreatureObject* creature);
 
