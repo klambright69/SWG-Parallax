@@ -17,12 +17,26 @@ int PlaceDecorationComponent::placeStructure(StructureDeed* deed, CreatureObject
 
 	ManagedReference<CityRegion*> city = creature->getCityRegion().get();
 
-	if (city == nullptr)
+	if (city == nullptr) {
+		// Decorations -- gardens, statues, fountains and the rest of the 54 deeds
+		// using this component -- may only be placed inside city limits.
+		//
+		// This used to return silently. PlaceStructureCommand discards the return
+		// value of placeStructure and reports SUCCESS regardless, so the deed
+		// simply did nothing and the player was given no reason at all. The
+		// equivalent check in StructureManager::placeStructureFromDeed already
+		// sends this same string, but decorations are rejected here and never
+		// reach it.
+		creature->sendSystemMessage("@city/city:build_no_city"); // You must be in a city to place that structure.
 		return 1;
+	}
 
 	CityManager* cityManager = creature->getZoneServer()->getCityManager();
-	if(cityManager == nullptr)
+
+	if (cityManager == nullptr) {
+		creature->error("null cityManager in PlaceDecorationComponent::placeStructure");
 		return 1;
+	}
 
 	if(!cityManager->canSupportMoreDecorations(city)) {
 		StringIdChatParameter param("city/city", "no_more_decos");
