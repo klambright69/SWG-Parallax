@@ -358,6 +358,26 @@ public:
 
 							UniqueReference<Vector<float>*> collisionPoints(CollisionManager::getCellFloorCollision(transform.getPositionX(), transform.getPositionY(), newCell));
 
+							// Adjacent cells' floor meshes do not always meet. Several stock
+							// buildings leave a few centimetres at a doorway that neither cell's
+							// floor covers -- mainhall <-> hallway2 in ply_all_house_lg_s02_fp1
+							// has a measured 0.094 unit dead band across the whole opening.
+							//
+							// A player stepping across such a threshold reports a position already
+							// inside the new cell but still inside that dead band. Dropping the
+							// update leaves them unable to pass, and only in the direction whose
+							// destination floor stops short -- which is why the fault appears
+							// one-way.
+							//
+							// Fall back to the cell being left. hasConnectedCell above has already
+							// established the two cells are joined by a portal, so this only ever
+							// applies while crossing between genuinely adjacent cells, and the
+							// height is still validated against real floor geometry below rather
+							// than skipped.
+							if (collisionPoints == nullptr || collisionPoints->size() == 0) {
+								collisionPoints = CollisionManager::getCellFloorCollision(transform.getPositionX(), transform.getPositionY(), currentCell);
+							}
+
 							if (collisionPoints == nullptr) {
 								return updateError(creO, "!collisionPoints");
 							}
