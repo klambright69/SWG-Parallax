@@ -121,6 +121,7 @@
 #include "server/zone/packets/object/transform/Transform.h"
 
 #include "server/zone/managers/statistics/StatisticsManager.h"
+#include "conf/ConfigManager.h"
 
 // #define DEBUG_SPEED_HACK
 
@@ -1942,6 +1943,9 @@ void PlayerManagerImplementation::disseminateExperience(TangibleObject* destruct
 		return;
 	}
 
+	// Read once per kill rather than per attacker per xp type.
+	const bool fullExperienceCredit = ConfigManager::instance()->getBool("Core3.FullExperienceCredit", false);
+
 	VectorMap<ManagedReference<CreatureObject*>, int> slExperience;
 	slExperience.setAllowOverwriteInsertPlan();
 	slExperience.setNullValue(0);
@@ -2153,7 +2157,28 @@ void PlayerManagerImplementation::disseminateExperience(TangibleObject* destruct
 				float xpAmount = baseXp;
 				int playerLevel = calculatePlayerLevel(attackerCreo, xpType);
 
-				xpAmount *= (float) damage / totalDamage;
+				// Core3.FullExperienceCredit gives every contributor the full award
+				// for the kill rather than a slice proportional to how much of the
+				// total damage they did, so a player who lands a few hits earns the
+				// same as one who did the bulk of the work.
+				//
+				// The share is still divided by the attacker's OWN damage rather
+				// than dropped entirely. entry is a per-attacker map keyed by xp
+				// type, so removing the division outright would hand a player the
+				// full award once per weapon type they used -- someone swapping
+				// between a rifle and a pistol would earn double. Dividing by their
+				// own total keeps the sum across their xp types at exactly one full
+				// award, split the way they actually fought.
+				//
+				// The playerLevel * 300 cap below still applies either way.
+				if (fullExperienceCredit) {
+					uint32 attackerDamage = entry->getTotalDamage();
+
+					if (attackerDamage > 0)
+						xpAmount *= (float) damage / attackerDamage;
+				} else {
+					xpAmount *= (float) damage / totalDamage;
+				}
 
 				//Cap xp based on level
 				xpAmount = Math::min(xpAmount, playerLevel * 300.f);
