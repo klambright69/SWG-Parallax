@@ -3430,6 +3430,29 @@ int AiAgentImplementation::setDestination() {
 			}
 			break;
 		case AiAgent::FLEEING: {
+			// How long the agent actually runs is kept separate from fleeDelay,
+			// which doubles as the cooldown before it may flee again (see
+			// Checks.cpp). Previously this derived the run time from that same
+			// value -- "(remaining / 4) < 1500" stopped the run once fewer than
+			// six seconds were left, making the run last delay-minus-6s and tying
+			// it to the cooldown. The flee actions now stamp an explicit stop time
+			// on the blackboard instead, so the two can be tuned independently.
+			if (peekBlackboard("fleeStopTime")) {
+				uint64 stopTime = readBlackboard("fleeStopTime").get<uint64>();
+
+				if (System::getMiliTime() < stopTime) {
+					break;
+				}
+
+				eraseBlackboard("fleeStopTime");
+				eraseBlackboard("fleeRange");
+				setMovementState(AiAgent::FOLLOWING);
+
+				break;
+			}
+
+			// Fallback for an agent that began fleeing by some path that did not
+			// stamp a stop time (a screenplay calling runAway directly).
 			int64 fleeDiff = (fleeDelay.miliDifference() / 4) * -1;
 
 			if (fleeDiff < 1500) {

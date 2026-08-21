@@ -16,6 +16,7 @@
 #include "server/zone/objects/player/FactionStatus.h"
 #include "server/zone/managers/reaction/ReactionManager.h"
 #include "server/zone/objects/creature/events/DroidHarvestTask.h"
+#include "conf/ConfigManager.h"
 
 namespace server {
 namespace zone {
@@ -428,6 +429,12 @@ public:
 			fleeDelay->addMiliTime(delay * 1000);
 		}
 
+		// Run duration is independent of the flee cooldown above. Core3.AiAgent.
+		// FleeRunDurationMs (default 10000) is how long the agent actually runs;
+		// fleeDelay stays the gate on how soon it may flee again.
+		uint64 runDuration = (uint64)ConfigManager::instance()->getInt("Core3.AiAgent.FleeRunDurationMs", 10000);
+		agent->writeBlackboard("fleeStopTime", (uint64)(System::getMiliTime() + runDuration));
+
 		agent->writeBlackboard("fleeRange", distance);
 		agent->runAway(tar->asCreatureObject(), distance, false);
 		agent->showFlyText("npc_reaction/flytext", "afraid", 0xFF, 0, 0);
@@ -694,6 +701,11 @@ public:
 
 				agent->clearQueueActions(true);
 				agent->writeBlackboard("fleeRange", distance);
+
+				// See the note in RunAway: run duration is decoupled from the
+				// fleeDelay cooldown.
+				uint64 runDuration = (uint64)ConfigManager::instance()->getInt("Core3.AiAgent.FleeRunDurationMs", 10000);
+				agent->writeBlackboard("fleeStopTime", (uint64)(System::getMiliTime() + runDuration));
 
 				agent->runAway(targetCreo, distance, false);
 				return SUCCESS;
