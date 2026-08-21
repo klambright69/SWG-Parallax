@@ -17,7 +17,11 @@ class ResourceContainer extends TangibleObject {
 	protected ResourceSpawn spawnObject;
 	protected int stackQuantity;
 
-	public static final int MAXSIZE = 100000;
+	// Maximum units in a single resource stack. Also sent to the client verbatim
+	// as the stack ceiling in ResourceContainerObjectMessage6, and used to split
+	// oversized stacks when surveying, emptying a hopper or merging containers,
+	// so every path agrees once this changes.
+	public static final int MAXSIZE = 10000000;
 
 	public ResourceContainer() {
 		stackQuantity = 0;

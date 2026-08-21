@@ -42,6 +42,8 @@
 
 
 object_tangible_container_general_satchel = object_tangible_container_general_shared_satchel:new {
+	-- Capacity raised from the client template's default.
+	containerVolumeLimit = 50,
 
 }
 

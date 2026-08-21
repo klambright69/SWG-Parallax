@@ -42,6 +42,8 @@
 
 
 object_tangible_bank_character_bank = object_tangible_bank_shared_character_bank:new {
+	-- Safety deposit capacity raised from the client template's 100.
+	containerVolumeLimit = 500,
 
 }
 

@@ -18,6 +18,7 @@
 #include "server/zone/managers/object/ObjectManager.h"
 
 #include "server/zone/objects/player/PlayerObject.h"
+#include "conf/ConfigManager.h"
 #include "server/zone/objects/player/sui/listbox/SuiListBox.h"
 #include "server/zone/objects/resource/ResourceContainer.h"
 #include "server/zone/objects/draftschematic/DraftSchematic.h"
@@ -719,6 +720,22 @@ void FactoryObjectImplementation::createNewObject() {
 		stopFactory("manf_error", "", "", -1);
 		return;
 	}
+
+	// Server-wide override for how much a factory run may pack into one crate.
+	// Draft schematics ship values from 1 to 100; this raises the ceiling without
+	// editing several hundred schematic files.
+	//
+	// Deliberately applied here rather than in TangibleObject::createFactoryCrate,
+	// because GenerateCraftedItemCommand calls that with an admin-supplied
+	// quantity which must not be overridden.
+	//
+	// The "crateSize > 1" guard below still uses the schematic's own value, so
+	// schematics that are meant to produce loose items rather than crates keep
+	// doing so.
+	int configuredCrateSize = ConfigManager::instance()->getInt("Core3.FactoryCrateSize", 0);
+
+	if (configuredCrateSize > 0 && crateSize > 1)
+		crateSize = configuredCrateSize;
 
 	if (crateSize > 1) {
 		String crateType = schematic->getFactoryCrateType();

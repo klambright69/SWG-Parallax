@@ -42,6 +42,8 @@
 
 
 object_tangible_container_general_cargo_pocket = object_tangible_container_general_shared_cargo_pocket:new {
+	-- Capacity raised from the client template's default.
+	containerVolumeLimit = 50,
 
 }
 

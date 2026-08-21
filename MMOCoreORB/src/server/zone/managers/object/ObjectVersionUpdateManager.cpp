@@ -55,6 +55,10 @@ int ObjectVersionUpdateManager::run() {
 		updateTangibleObjectsVersion6(); // Use Counts, Ability List, and PVP Ratings
 		version++;
 		/* no break */
+	case INITIAL_DATABASE_VERSION+6:
+		updateCharacterBankCapacity(); // Safety deposit box item limit
+		version++;
+		/* no break */
 	};
 
 	if(version != originalVersion) {
@@ -730,4 +734,82 @@ void ObjectVersionUpdateManager::updateCityTreasuryToDouble(){
 		e.printStackTrace();
 	}
 
+}
+
+void ObjectVersionUpdateManager::updateCharacterBankCapacity() {
+	// containerVolumeLimit is a persisted field, so raising it on the object
+	// template only affects newly created banks. Every character created before
+	// that change keeps the old limit in the object database, which for the bank
+	// means essentially every existing player. This rewrites the stored value so
+	// the new limit applies to them too.
+	//
+	// Keep BANKCONTAINERVOLUMELIMIT in step with containerVolumeLimit in
+	// bin/scripts/object/tangible/bank/character_bank.lua.
+	static const uint32 BANKCONTAINERVOLUMELIMIT = 500;
+
+	ObjectDatabase* database = ObjectDatabaseManager::instance()->loadObjectDatabase("sceneobjects", true);
+
+	if (database == nullptr) {
+		error("updateCharacterBankCapacity: could not open the sceneobjects database");
+		return;
+	}
+
+	ObjectDatabaseIterator iterator(database);
+
+	ObjectInputStream objectData(2000);
+	uint64 objectID = 0;
+	int found = 0;
+	int updated = 0;
+
+	// Banks are plain Container objects, so the class name cannot identify them.
+	// Match on the template CRC instead.
+	const uint32 bankCRC = String("object/tangible/bank/character_bank.iff").hashCode();
+
+	info("Updating character bank capacity", true);
+
+	try {
+		while (iterator.getNextKeyAndValue(objectID, &objectData)) {
+			uint32 objectCRC = 0;
+
+			try {
+				if (!Serializable::getVariable<uint32>(STRING_HASHCODE("SceneObject.serverObjectCRC"), &objectCRC, &objectData) || objectCRC != bankCRC) {
+					objectData.clear();
+					continue;
+				}
+			} catch (...) {
+				objectData.clear();
+				continue;
+			}
+
+			++found;
+
+			uint32 currentLimit = 0;
+			uint32 newLimit = BANKCONTAINERVOLUMELIMIT;
+
+			try {
+				if (Serializable::getVariable<uint32>(STRING_HASHCODE("SceneObject.containerVolumeLimit"), &currentLimit, &objectData) && currentLimit != newLimit) {
+					ObjectOutputStream newVariableData;
+					TypeInfo<uint32>::toBinaryStream(&newLimit, &newVariableData);
+
+					ObjectOutputStream* newObjectData = changeVariableData(STRING_HASHCODE("SceneObject.containerVolumeLimit"), &objectData, &newVariableData);
+
+					newObjectData->reset();
+					database->putData(objectID, newObjectData, nullptr);
+
+					++updated;
+
+					printf("\r\tUpdating bank capacity [%d]\t", updated);
+				}
+			} catch (...) {
+				error("updateCharacterBankCapacity: failed on bank " + String::valueOf(objectID));
+			}
+
+			objectData.clear();
+		}
+	} catch (Exception& e) {
+		error(e.getMessage());
+		e.printStackTrace();
+	}
+
+	info("Done updating character bank capacity: " + String::valueOf(updated) + " of " + String::valueOf(found) + " banks raised to " + String::valueOf(BANKCONTAINERVOLUMELIMIT) + "\n", true);
 }

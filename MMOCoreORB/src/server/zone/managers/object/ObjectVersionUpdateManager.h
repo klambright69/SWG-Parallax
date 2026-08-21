@@ -36,6 +36,7 @@ public:
 
 	void updateCityTreasury();
 	void updateCityTreasuryToDouble();
+	void updateCharacterBankCapacity();
 	int run();
 
 };
