@@ -46,7 +46,7 @@ object_tangible_ship_crafted_chassis_hutt_light_s01_deed = object_tangible_ship_
 	gameObjectType = 8388617,
 
 	shipType = 1, --FIGHTERSHIP,
-	shipControlDevice = "object/intangible/ship/hutt_light_01_pcd.iff",
+	shipControlDevice = "object/intangible/ship/hutt_light_s01_pcd.iff",
 	generatedObjectTemplate = "object/ship/player/player_hutt_light_s01.iff",
 }
 

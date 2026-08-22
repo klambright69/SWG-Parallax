@@ -8,6 +8,7 @@
 #include "server/zone/objects/scene/SceneObject.h"
 #include "server/zone/managers/objectcontroller/ObjectController.h"
 #include "templates/params/creature/PlayerArrangement.h"
+#include "MountWeaponStow.h"
 
 class MountCommand : public QueueCommand {
 	Vector<uint32> restrictedBuffCRCs;
@@ -115,6 +116,10 @@ public:
 		}
 
 		creature->synchronizeCloseObjects();
+
+		// Put away any drawn weapon: the client renders a rider who is still
+		// holding one in a standing pose rather than the riding animation.
+		MountWeaponStow::stow(creature);
 
 		creature->updateCooldownTimer("mount_dismount", 2000);
 

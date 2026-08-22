@@ -10,6 +10,7 @@
 #include "templates/creature/SharedCreatureObjectTemplate.h"
 #include "server/zone/packets/object/DataTransform.h"
 #include "server/zone/packets/creature/CreatureObjectDeltaMessage3.h"
+#include "MountWeaponStow.h"
 
 class DismountCommand : public QueueCommand {
 	Vector<uint32> restrictedBuffCRCs;
@@ -69,6 +70,9 @@ public:
 		}
 
 		creature->clearState(CreatureState::RIDINGMOUNT);
+
+		// Give back whatever was stowed when they mounted.
+		MountWeaponStow::restore(creature);
 
 		// reapply speed buffs if they exist
 		for (int i = 0; i < restrictedBuffCRCs.size(); i++) {
