@@ -1,3 +1,13 @@
+-- EXAMPLE CONFIGURATION
+--
+-- Copy this to config.lua and fill in the CHANGEME values before starting the
+-- server. config.lua itself is deliberately not tracked: it holds the live
+-- database password and the DBSecret used for session validation, and neither
+-- belongs in a published repository.
+--
+-- Every other value here matches what the Parallax server actually runs, so this
+-- doubles as documentation of the server's configuration.
+
 --Copyright (C) 2007 <SWGEmu>
 
 --This File is part of Core3.
@@ -59,9 +69,9 @@ Core3 = {
 	DBPort = 3306,
 	DBName = "swgemu",
 	DBUser = "swgemu",
-	DBPass = "123456",
+	DBPass = "CHANGEME",
 	DBInstances = 2,
-	DBSecret = "swgemus3cr37!", -- Change this! This value should be unique and of reasonable length.
+	DBSecret = "CHANGEME-unique-and-long", -- Change this! This value should be unique and of reasonable length.
 
 	------Login Server Config------
 	LoginPort = 44453,
@@ -74,7 +84,7 @@ Core3 = {
 	MantisPort = 3306,
 	MantisName = "swgemu",
 	MantisUser = "swgemu",
-	MantisPass = "123456",
+	MantisPass = "CHANGEME",
 	MantisPrfx = "mantis_", -- The prefix for your mantis tables.
 
 	------Metrics Server Config------

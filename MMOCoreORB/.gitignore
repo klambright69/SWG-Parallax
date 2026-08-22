@@ -42,6 +42,9 @@ tags
 utils/gtest-1.6.0/*
 ../*
 bin/conf/*
+# config.lua holds the live database password and DBSecret and stays untracked;
+# example-config.lua is the sanitised copy that is published instead.
+!bin/conf/example-config.lua
 .*.swp
 .ycm_extra_conf.py*
 sql/insert_strings.sql
