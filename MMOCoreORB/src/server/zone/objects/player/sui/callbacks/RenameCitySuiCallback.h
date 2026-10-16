@@ -97,16 +97,23 @@ public:
 
 		cityRegion->setCustomRegionName(cityName);
 
-		if(cityRegion->hasShuttleInstallation()) {
-			Reference<PlanetTravelPoint*> tp = planetManager->getPlanetTravelPoint(oldName);
+		// 10/12/26 klambright - Renames each active city shuttle travel-point key, including the separately named Rank-9 port, so both remain addressable after the city name changes.
+		for (int i = 0; i < 2; ++i) {
+			uint64 shuttleID = cityRegion->getShuttleID(i);
+			if (shuttleID == 0)
+				continue;
 
-			if(tp != nullptr) {
-				Reference<PlanetTravelPoint*> newTP = tp;
-				newTP->setPointName(cityName);
-				planetManager->removePlayerCityTravelPoint(oldName);
-				planetManager->addPlayerCityTravelPoint(newTP);
-			}
+			String oldTravelPointName = i == 0 ? oldName : oldName + " (Shuttleport 2)";
+			String newTravelPointName = i == 0 ? cityName : cityName + " (Shuttleport 2)";
+			Reference<PlanetTravelPoint*> travelPoint = planetManager->getPlanetTravelPoint(oldTravelPointName);
+			if (travelPoint == nullptr)
+				continue;
+
+			travelPoint->setPointName(newTravelPointName);
+			planetManager->removePlayerCityTravelPoint(oldTravelPointName);
+			planetManager->addPlayerCityTravelPoint(travelPoint);
 		}
+		//--->END OF MODIFICATION - kl<--
 
 		if(isRegistered)
 			cityManager->registerCity(cityRegion, creature);

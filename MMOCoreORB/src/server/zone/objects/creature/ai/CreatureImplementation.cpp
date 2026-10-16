@@ -231,7 +231,7 @@ void CreatureImplementation::notifyDespawn(Zone* zone) {
 
 bool CreatureImplementation::canHarvestMe(CreatureObject* player) {
 
-	if(!player->isInRange(_this.getReferenceUnsafeStaticCast(), 10.0f) || player->isInCombat() || !player->hasSkill("outdoors_scout_novice")
+	if(!player->isInRange(_this.getReferenceUnsafeStaticCast(), 32.0f) || player->isInCombat() || !player->hasSkill("outdoors_scout_novice")
 			|| player->isDead() || player->isIncapacitated() || isPet())
 		return false;
 
@@ -259,7 +259,7 @@ bool CreatureImplementation::canHarvestMe(CreatureObject* player) {
 bool CreatureImplementation::canDroidHarvestMe(CreatureObject* player,CreatureObject* droid) {
 
 	// droid should be able to harvest if in range, with current AI
-	if(!droid->isInRange(_this.getReferenceUnsafeStaticCast(), (10.0f + droid->getTemplateRadius() + getTemplateRadius())) || droid->isInCombat() || !player->hasSkill("outdoors_scout_novice")
+	if(!droid->isInRange(_this.getReferenceUnsafeStaticCast(), (32.0f + droid->getTemplateRadius() + getTemplateRadius())) || droid->isInCombat() || !player->hasSkill("outdoors_scout_novice")
 			|| droid->isDead() || droid->isIncapacitated() || isPet()) {
 		return false;
 	}
@@ -347,7 +347,7 @@ bool CreatureImplementation::canMilkMe(CreatureObject* player) {
 	if (!hasMilk() || milkState != CreatureManager::NOTMILKED  || _this.getReferenceUnsafeStaticCast()->isInCombat() || _this.getReferenceUnsafeStaticCast()->isDead() || isPet())
 		return false;
 
-	if(!player->isInRange(_this.getReferenceUnsafeStaticCast(), 7.0f) || player->isInCombat() || player->isDead() || player->isIncapacitated() || !(player->hasState(CreatureState::MASKSCENT)))
+	if(!player->isInRange(_this.getReferenceUnsafeStaticCast(), 12.0f) || player->isInCombat() || player->isDead() || player->isIncapacitated() || !(player->hasState(CreatureState::MASKSCENT)))
 		return false;
 
 	return true;

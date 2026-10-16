@@ -54,6 +54,15 @@ CitySpecializationCooldown = 1440
 --The amount of time in minutes before another withdrawal from the city treasury may be made.
 TreasuryWithdrawalCooldown = 1440
 
+--Political experience the sitting mayor is awarded each city update cycle.
+--Stock is 750.  Note this is per cycle, not per day, so it is paid out on
+--whatever period CityUpdateInterval sets.
+MayoralExperience = 1500
+
+--Political experience each mayoral candidate is awarded per vote received,
+--counted once per city update cycle.  Stock is 300.
+CandidateVoteExperience = 300
+
 --The number of city update cycles that must pass before mayoral voting process is complete.
 CityVotingCycles = 1
 
@@ -61,7 +70,10 @@ CityVotingCycles = 1
 CityVotingCyclesUntilLocked = 2
 
 --The amount of time in minutes before the city performs an update.
-CityUpdateInterval = 1440
+--10080 = 7 days.  Each update charges civic maintenance, collects income tax,
+--advances the voting cycle and awards the mayor political xp, so this is
+--he period for all of those, not just the rank recalculation.
+CityUpdateInterval = 10080
 
 --The amount of time in minutes a new city has to gain enough citizens to remain a city.
 NewCityGracePeriod = 1440
@@ -72,17 +84,20 @@ OldCityGracePeriod = 2880
 --Whether or not to allow the use of the command, /cityWarn to give players a TEF while in the city limits.
 EnableCityWarn = true
 
---The number of citizens required to achieve each city rank. (Outpost, Village, Township, City, Metropolis)
-CitizensPerRank = {1, 2, 4, 6, 8}
+-- 10/11/26 AI / klambright - Sets the nine city-population thresholds, radii, and trainer limits consumed by CityManagerImplementation.cpp; preserves the primary checkout's existing update/grace intervals and leaves mission-terminal scaling unchanged.
+--The number of citizens required to achieve each city rank.
+CitizensPerRank = {1, 2, 4, 8, 12, 18, 24, 30, 36}
 --CitizensPerRank = {10, 20, 35, 55, 85}
 
---The radius in meters of the city at each city rank. (Outpost, Village, Township, City, Metropolis)
-RadiusPerRank = {150, 200, 300, 400, 450}
+--The radius in meters of the city at each city rank.
+RadiusPerRank = {100, 150, 200, 250, 300, 350, 400, 450, 500}
 
 -- Maximum for each rank.  ex. rank 1 = DecorationsPerRank * 1, rank 5 = DecorationsPerRank * 5
 DecorationsPerRank = 10
-TrainersPerRank = 3
+TrainersPerRank = 6
+MaximumSkillTrainers = 36
 MissionTerminalsPerRank = 3
+--->END OF MODIFICATION<--
 
 -- Amount to discount city maintenance  float.  1 = 100%, .75 =75%, .5=50% etc
 maintenanceDiscount = 1.0
@@ -91,21 +106,23 @@ maintenanceDiscount = 1.0
 	CITIES ALLOWED PER PLANET
 	-------------------------
 	
-	This is the number of cities allowed per planet, per rank. (Outpost, Village, Township, City, Metropolis)
+	This is the number of cities allowed per planet, per rank. (Legacy ranks are (Outpost, Village, Township, City, Metropolis))
 	The maximum amount of cities per rank is 255.
 --]]
+-- 10/11/26 AI / klambright - Sets caps for all nine city ranks while retaining zero-city planets; CityManagerImplementation.cpp reads these per-planet vectors for rank-cap checks.
 CitiesAllowed = {
-	{"corellia", {20, 20, 15, 10, 10}},
-	{"dantooine", {50, 50, 30, 20, 20}},
-	{"dathomir", {0, 0, 0, 0, 0}},
-	{"endor", {0, 0, 0, 0, 0}},
-	{"lok", {50, 50, 30, 20, 20}},
-	{"naboo", {20, 20, 15, 10, 10}},
-	{"rori", {50, 50, 30, 20, 20}},
-	{"talus", {50, 50, 30, 20, 20}},
-	{"tatooine", {20, 20, 15, 10, 10}},
-	{"yavin4", {0, 0, 0, 0, 0}}
+	{"corellia", {18, 18, 18, 18, 13, 9, 9, 6, 2}},
+	{"dantooine", {25, 25, 25, 25, 18, 12, 12, 7, 4}},
+	{"dathomir", {0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	{"endor", {0, 0, 0, 0, 0, 0, 0, 0, 0}},
+	{"lok", {25, 25, 25, 25, 18, 12, 12, 7, 3}},
+	{"naboo", {18, 18, 18, 18, 13, 9, 9, 6, 2}},
+	{"rori", {25, 25, 25, 25, 18, 12, 12, 7, 3}},
+	{"talus", {20, 20, 20, 20, 15, 10, 10, 6, 3}},
+	{"tatooine", {18, 18, 18, 18, 13, 9, 9, 6, 2}},
+	{"yavin4", {0, 0, 0, 0, 0, 0, 0, 0, 0}}
 }
+--->END OF MODIFICATION<--
 
 
 
@@ -183,10 +200,14 @@ CityTaxes = {
 	CITY SPECIALIZATIONS
 	====================
 --]]
+-- 10/11/26 AI / klambright - Defines rank-5 base specialization costs, skill-mod baselines, and bit identifiers consumed by CitySpecializationMap; multi-specialization display names are loaded from city_specializations_matrix.lua.
 CitySpecializations = {
 	{--Sample Rich
 		name = "@city/city:city_spec_sample_rich",
-		cost = 70000,
+		displayName = "@city/city:city_spec_sample_rich",
+		id = 1,
+		minimumRank = 5,
+		cost = 52500,
 		skillMods = {
 			{"private_spec_samplesize", 20},
 			{"private_spec_samplerate", 10}
@@ -194,51 +215,73 @@ CitySpecializations = {
 	},
 	{--Manufacturing Center
 		name = "@city/city:city_spec_industry",
-		cost = 50000,
+		displayName = "@city/city:city_spec_industry",
+		id = 2,
+		minimumRank = 5,
+		cost = 37500,
 		skillMods = {
 			{"private_spec_assembly", 10}
 		}
 	},
 	{--Medical Center
 		name = "@city/city:city_spec_doctor",
-		cost = 80000,
+		displayName = "@city/city:city_spec_doctor",
+		id = 4,
+		minimumRank = 5,
+		cost = 60000,
 		skillMods = {
 			{"private_medical_rating", 10}
 		}
 	},
 	{--Clone Lab
 		name = "@city/city:city_spec_cloning",
-		cost = 80000,
+		displayName = "@city/city:city_spec_cloning",
+		id = 8,
+		minimumRank = 5,
+		cost = 60000,
 		skillMods = {
 			{"private_spec_cloning", 20}
 		}
 	},
 	{--Research Center
 		name = "@city/city:city_spec_research",
-		cost = 125000,
+		displayName = "@city/city:city_spec_research",
+		id = 16,
+		minimumRank = 5,
+		cost = 82000,
 		skillMods = {
 			{"private_spec_experimentation", 15}
 		}
 	},
 	{--Improved Job Market
 		name = "@city/city:city_spec_missions",
-		cost = 80000,
+		displayName = "@city/city:city_spec_missions",
+		id = 32,
+		minimumRank = 5,
+		cost = 60000,
 		skillMods = {
 			{"private_spec_missions", 15}
 		}
 	},
 	{--Entertainment District
 		name = "@city/city:city_spec_entertainer",
-		cost = 80000,
+		displayName = "@city/city:city_spec_entertainer",
+		id = 64,
+		minimumRank = 5,
+		cost = 60000,
 		skillMods = {
 			{"private_spec_entertainer", 10}
 		}
 	},
 	{--Stronghold
 		name = "@city/city:city_spec_stronghold",
-		cost = 150000,
+		displayName = "@city/city:city_spec_stronghold",
+		id = 128,
+		minimumRank = 5,
+		cost = 75000,
 		skillMods = {
 			{"private_defense", 90}
 		}
 	},
 }
+--->END OF MODIFICATION<--

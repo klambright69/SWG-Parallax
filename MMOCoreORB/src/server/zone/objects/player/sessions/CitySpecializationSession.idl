@@ -12,6 +12,11 @@ class CitySpecializationSession extends Facade {
 	protected SceneObject terminalObject;
 	
 	protected string specialization;
+	// 10/10/26 klambright - Tracks the selected specialization subset as an eight-bit mask while the mayor toggles entries in the existing SUI; only the final combination key is persisted on CityRegion.  Second line preserves the clear-then-apply path when the mator has no learned options left to display. 
+	protected unsigned short specializationMask;
+
+	protected boolean selectionCleared;
+	// continue
 	
 	public CitySpecializationSession(CreatureObject creature, CityRegion city, SceneObject terminal = null) {
 		Logger.setLoggingName("CitySpecializationSession");
@@ -23,8 +28,17 @@ class CitySpecializationSession extends Facade {
 	}
 
 	public native int initializeSession();
-	
+
+	// 10/10/26 klambright - Rebuilds the small available-specialization list while preserving the session's pending mask.
+	public native int showSelectionMenu();
+	// continue
+
 	public native int sendConfirmationBox(final string choice);
+
+	// 10/10/26 klambright - Adds server-side toggle and max-per-rank validation methods for composing one allowed multi-specialization choice without exposing hundreds of menu rows.
+	public native int toggleSpecialization(final string choice);
+	public native int getMaximumSpecializations();
+	// --->END OF MODIFICATIONS - kl<---
 	
 	public native int acceptChoice();
 	

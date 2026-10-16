@@ -63,6 +63,9 @@ Luna<LuaCreatureObject>::RegType LuaCreatureObject::Register[] = {
 		{ "getWorldPositionY", &LuaSceneObject::getWorldPositionY },
 		{ "getWorldPositionZ", &LuaSceneObject::getWorldPositionZ },
 		{ "getParentID", &LuaSceneObject::getParentID },
+		// 10/15/26 klambright - Adds a Lua getCityRegion() that returns the CityRegion a player is currently inside (set by CityRegionImplementation::notifyEnter) even when the city is not registered on the planetary map, because getCityRegionAt only searches PlanetManager's regionMap, which holds registered cities only. Used by screenplays/cities/city_overhead_traffic.lua; registered in LuaSceneObject.cpp and LuaCreatureObject.cpp.
+		{ "getCityRegion", &LuaSceneObject::getCityRegion },
+		//--->END OF MODIFICATION - kl<-- continue
 		{ "isInRangeWithObject", &LuaSceneObject::isInRangeWithObject },
 		{ "isInRangeWithObject3d", &LuaSceneObject::isInRangeWithObject3d },
 		{ "getDistanceTo", &LuaSceneObject::getDistanceTo },

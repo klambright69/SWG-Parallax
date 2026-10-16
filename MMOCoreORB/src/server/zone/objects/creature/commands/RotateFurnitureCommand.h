@@ -27,7 +27,7 @@ public:
 		if (ghost == nullptr)
 			return GENERALERROR;
 
-		bool enhancedRotate = ConfigManager::instance()->getBool("Core3.StructureManager.EnhancedFurnitureRotate", false);
+		bool enhancedRotate = ConfigManager::instance()->getBool("Core3.StructureManager.EnhancedFurnitureRotate", true);
 
 		String dir;
 		int degrees = 0;

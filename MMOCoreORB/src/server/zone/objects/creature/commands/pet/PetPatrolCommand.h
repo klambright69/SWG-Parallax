@@ -52,13 +52,19 @@ public:
 		pet->setMovementState(AiAgent::PATROLLING);
 		pet->clearSavedPatrolPoints();
 
+		// 09/24/26 - AI / klambright: Restore incremental patrol-point queueing so the
+		// movement behavior removes each reached point and advances to the next one.
+		// This uses AiAgent::addPatrolPoint, which is consumed by findNextPosition and
+		// keeps patrol progression synchronized with the PATROLLING behavior tree.
 		for (int i = 0; i < controlDevice->getPatrolPointSize(); i++) {
 			PatrolPoint point = controlDevice->getPatrolPoint(i);
 			pet->addPatrolPoint(point);
 		}
 
 		return SUCCESS;
+
 	}
 };
 
+// End of Modifications
 #endif /* PETPATROLCOMMAND_H_ */

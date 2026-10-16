@@ -399,8 +399,20 @@ public:
 
 	Behavior::Status execute(AiAgent* agent, unsigned int startIdx = 0) const {
 		// we don't need to check a value. Just checking to see if this value
-		// exists on the blackboard is fine since it can never be false
-		if (agent->isWaiting() || durationMin < 0) { // < 0 means indefinite wait
+		// exists on the blackboard while the wait is active.
+		if (agent->peekBlackboard("isWaiting")) {
+			if (agent->isWaiting() || durationMin < 0) // < 0 means indefinite wait
+				return RUNNING;
+
+			// 09/24/26 - AI / klambright: Clear an expired wait so the pet
+			// behavior tree can proceed from the reached patrol point to the
+			// next queued point. This interacts with AiAgent::setWait and
+			// AiAgent::isWaiting, which track the timer independently.
+			agent->eraseBlackboard("isWaiting");
+			return SUCCESS;
+		}
+
+		if (durationMin < 0) { // < 0 means indefinite wait
 			return RUNNING;
 		}
 
@@ -1103,3 +1115,5 @@ public:
 }
 
 #endif // SIMPLEACTIONS_H_
+
+// End of Modifications

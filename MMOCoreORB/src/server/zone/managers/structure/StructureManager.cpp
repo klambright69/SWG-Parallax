@@ -442,10 +442,46 @@ int StructureManager::placeStructureFromDeed(CreatureObject* creature, Structure
 			return 1;
 		}
 
-		if (serverTemplate->isUniqueStructure() && city->hasUniqueStructure(serverTemplate->getServerObjectCRC())) {
+		// 10/12/26 klambright - Allows at most two player-city shuttleports at Rank 9 and enforces a 400m horizontal separation from every already tracked city shuttle.
+		bool isCityShuttleport = serverTemplatePath.contains("object/building/player/city/shuttleport_");
+		int placedShuttleCount = 0;
+		for (int i = 0; i < city->getStructuresCount(); ++i) {
+			ManagedReference<StructureObject*> structure = city->getCivicStructure(i);
+			if (structure != nullptr && structure->isShuttleInstallation())
+				++placedShuttleCount;
+		}
+		// klambright - Uses live city structures as the authoritative count for placement, preventing stale/duplicate persisted shuttle IDs from incorrectly blocking the one permitted second port.
+		int shuttleCount = isCityShuttleport ? placedShuttleCount : city->getShuttleCount();
+		if (isCityShuttleport && shuttleCount > 0) {
+			if (city->getCityRank() < CityRegion::RANK_PLANETARY_CAPITAL || shuttleCount >= 2) {
+				creature->sendSystemMessage("@player_structure:cant_place_unique"); // This city can only support a single structure of this type.
+				return 1;
+			}
+
+			for (int i = 0; i < city->getStructuresCount(); ++i) {
+				ManagedReference<StructureObject*> existingShuttle = city->getCivicStructure(i);
+				if (existingShuttle == nullptr || !existingShuttle->isShuttleInstallation())
+					continue;
+
+				float deltaX = x - existingShuttle->getWorldPositionX();
+				float deltaY = y - existingShuttle->getWorldPositionY();
+				if ((deltaX * deltaX) + (deltaY * deltaY) < 400.0f * 400.0f) {
+					creature->sendSystemMessage("This structure must be placed at least 400m from any similar structure.");
+					return 1;
+				}
+			}
+		}
+		// continue
+
+		// klambright - Exempts only the permitted second Rank-9 city shuttleport from the shared unique-structure guard; the preceding count and distance checks still apply.
+		bool isPermittedSecondShuttleport = isCityShuttleport
+				&& city->getCityRank() == CityRegion::RANK_PLANETARY_CAPITAL
+				&& placedShuttleCount == 1;
+		if (serverTemplate->isUniqueStructure() && city->hasUniqueStructure(serverTemplate->getServerObjectCRC()) && !isPermittedSecondShuttleport) {
 			creature->sendSystemMessage("@player_structure:cant_place_unique"); // This city can only support a single structure of this type.
 			return 1;
 		}
+		//--->END OF MODIFICATION - kl<--
 	}
 
 	Locker _lock(deed, creature);
@@ -1080,8 +1116,8 @@ void StructureManager::reportStructureStatus(CreatureObject* creature, Structure
 
 		// "Number of Items in Building: 42 / 400". The client has no string for the
 		// limit, so it is appended to the existing localised prompt rather than
-		// inventing an untranslated label. The maximum is lots * 100, capped at
-		// MAXPLAYERITEMS, or a flat 250 for civic structures.
+		// inventing an untranslated label. The maximum is lots * 300 (was 100), capped at
+		// MAXPLAYERITEMS (was lot dependent, changed to 1500 max), or a flat 1500 (was 250) for civic structures.
 		status->addMenuItem("@player_structure:items_in_building_prompt "
 			+ String::valueOf(building->getCurrentNumberOfPlayerItems())
 			+ " / " + String::valueOf(building->getMaximumNumberOfPlayerItems())); // Number of Items in Building:

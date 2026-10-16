@@ -46,6 +46,7 @@ public:
 			ManagedReference<SceneObject*> targetObject = server->getZoneServer()->getObject(target, true);
 
 			if (targetObject != nullptr || targetObject->isPlayerCreature()) {
+
 				CreatureObject* player = targetObject->asCreatureObject();
 
 				PatrolPoint point;
@@ -57,6 +58,7 @@ public:
 				controlDevice->addPatrolPoint(point);
 
 				player->sendSystemMessage("@pet/pet_menu:patrol_added"); // Patrol point acknowledged
+			
 			}
 		}
 

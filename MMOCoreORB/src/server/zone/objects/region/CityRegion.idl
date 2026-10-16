@@ -86,6 +86,11 @@ class CityRegion extends ManagedObject implements Logger {
 
 	protected unsigned long shuttleID;
 
+	// 10/12/26 klambright - Persists the second rank-9 shuttle and its two-day contraction grace deadline so shuttle placement limits and cleanup remain correct across zone reloads; StructureManager validates slots and CityManager schedules removal.
+	protected unsigned long secondShuttleID;
+	protected unsigned long extraShuttleGraceDeadline;
+	// continue
+
 	protected transient boolean loaded;
 
 	@dereferenced
@@ -131,12 +136,22 @@ class CityRegion extends ManagedObject implements Logger {
 	@dereferenced
 	protected transient VectorMap<unsigned long, TangibleObject> bazaars;
 
+	// klambright - Extends persisted city rank values to nine and aliases legacy structure-rank names to their corresponding renamed ranks for existing unlock checks.
 	public static final byte RANK_CLIENT = 0;
 	public static final byte RANK_OUTPOST = 1;
-	public static final byte RANK_VILLAGE = 2;
-	public static final byte RANK_TOWNSHIP = 3;
-	public static final byte RANK_CITY = 4;
-	public static final byte RANK_METROPOLIS = 5;
+	public static final byte RANK_WAYSTATION_ENCAMPMENT = 2;
+	public static final byte RANK_HOMESTEAD_SECTOR = 3;
+	public static final byte RANK_GUILD_BOROUGH = 4;
+	public static final byte RANK_SPACEPORT_TOWNSHIP = 5;
+	public static final byte RANK_INDUSTRIAL_NEO_CITY = 6;
+	public static final byte RANK_UPPER_CITY_SPIRE = 7;
+	public static final byte RANK_HIGH_SECTOR_CITADEL = 8;
+	public static final byte RANK_PLANETARY_CAPITAL = 9;
+	public static final byte RANK_VILLAGE = RANK_WAYSTATION_ENCAMPMENT;
+	public static final byte RANK_TOWNSHIP = RANK_HOMESTEAD_SECTOR;
+	public static final byte RANK_CITY = RANK_GUILD_BOROUGH;
+	public static final byte RANK_METROPOLIS = RANK_SPACEPORT_TOWNSHIP;
+	// continue
 
 	public static final byte TAX_INCOME = 0;
 	public static final byte TAX_PROPERTY = 1;
@@ -539,10 +554,15 @@ class CityRegion extends ManagedObject implements Logger {
 		cityHall = building;
 	}
 
+	// 10/12/26 klambright - Tracks removal of either shuttle independently, exposes the existing IDs for placement/radius checks, and retains a stable travel-point name for the second port.
 	@preLocked
-	public void removeShuttleInstallation() {
-		hasShuttle = false;
-		shuttleID = 0;
+	public void removeShuttleInstallation(unsigned long id) {
+		if (shuttleID == id)
+			shuttleID = 0;
+		else if (secondShuttleID == id)
+			secondShuttleID = 0;
+
+		hasShuttle = shuttleID != 0 || secondShuttleID != 0;
 	}
 
 	@read
@@ -551,10 +571,74 @@ class CityRegion extends ManagedObject implements Logger {
 	}
 
 	@preLocked
-	public void setShuttleID(unsigned long id) {
-		shuttleID = id;
-		hasShuttle = true;
+	public void setShuttleID(unsigned long id, unsigned long previousID) {
+		// 10/14/26 AI / klambright - Stores each shuttleport structure ID, replacing any legacy shuttle-NPC ID with that parent structure ID as each shuttle registers after a server restart.
+		if (shuttleID == previousID) {
+			shuttleID = id;
+			hasShuttle = true;
+			return;
+		}
+		if (secondShuttleID == previousID) {
+			secondShuttleID = id;
+			hasShuttle = true;
+			return;
+		}
+
+		if (shuttleID == id || secondShuttleID == id)
+			return;
+
+		if (shuttleID == 0)
+			shuttleID = id;
+		else if (secondShuttleID == 0)
+			secondShuttleID = id;
+
+		hasShuttle = shuttleID != 0 || secondShuttleID != 0;
 	}
+	//--->END OF MODIFICATION<--
+
+	@read
+	public int getShuttleCount() {
+		// 10/12/26 AI / klambright - Counts each persisted shuttle with IDL-supported conditionals instead of a ternary, avoiding the IDL generator parse error while returning the same value.
+		int shuttleCount = 0;
+		if (shuttleID != 0)
+			shuttleCount++;
+		if (secondShuttleID != 0)
+			shuttleCount++;
+		return shuttleCount;
+	}
+	// continue
+
+	@read
+	public unsigned long getShuttleID(int index) {
+		if (index == 0)
+			return shuttleID;
+		if (index == 1)
+			return secondShuttleID;
+		return 0;
+	}
+
+	@read
+	public unsigned long getSecondShuttleID() {
+		return secondShuttleID;
+	}
+
+	@read
+	public unsigned long getExtraShuttleGraceDeadline() {
+		return extraShuttleGraceDeadline;
+	}
+
+	@preLocked
+	public void setExtraShuttleGraceDeadline(unsigned long deadline) {
+		extraShuttleGraceDeadline = deadline;
+	}
+
+	@dirty
+	public string getShuttleTravelPointName(unsigned long id) {
+		if (id == secondShuttleID)
+			return getCityRegionName() + " (Shuttleport 2)";
+		return getCityRegionName();
+	}
+	//--->END OF MODIFICATION - kl<--
 
 	@dirty
 	public int getMissionTerminalCount() {

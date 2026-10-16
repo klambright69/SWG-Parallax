@@ -47,3 +47,6 @@
 -- Server Objects
 includeFile("building/dathomir/mtn_clan_stronghold.lua")
 includeFile("building/dathomir/night_sister_stronghold.lua")
+-- 09/25/26 - AI / klambright: Registers the Dathomir-specific Village shuttleport object template so the screenplay can create its persistent shuttleport with child shuttle, travel terminal, and ticket collector; this interacts with the building object registry and Village travel service.
+includeFile("building/dathomir/shuttleport_dathomir.lua")
+--->END OF MODIFICATION<---

@@ -196,8 +196,10 @@ void VehicleControlDeviceImplementation::storeObject(CreatureObject* player, boo
 	/*if (!controlledObject->isInQuadTree())
 		return;*/
 
-	if (!force && (player->isInCombat() || player->isDead()))
+	// 10/05/26 AI / klambright: Allow vehicle control devices to store their deployed vehicle while the owner is in combat, matching creature-mount storage; retain the dead-player restriction. This guard runs in the vehicle deed store flow before mounted-player dismount handling, decay-task cancellation, and removal of the vehicle from the world.
+	if (!force && player->isDead())
 		return;
+	// --->END OF MODIFICATION<--
 
 	if (player->isRidingMount() && player->getParent() == controlledObject) {
 		if (!force && !player->checkCooldownRecovery("mount_dismount"))

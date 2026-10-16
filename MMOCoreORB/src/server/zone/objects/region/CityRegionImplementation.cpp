@@ -47,15 +47,66 @@ void CityRegionImplementation::notifyLoadFromDatabase() {
 	if (cityRank == CityManager::CLIENT)
 		return;
 
+	// 10/10/26 klambright - Removes legacy persisted specializations below the new rank-5 eligibility threshold so old city records cannot grant benefits at ranks 1-4.
+	if (cityRank < RANK_SPACEPORT_TOWNSHIP && !citySpecialization.isEmpty())
+		citySpecialization = "";
+	// continue
+
 	Zone* zone = getZone();
 
 	if (zone == nullptr)
 		return;
 
+	// 10/14/26 AI / klambright - Clears only legacy CityRegion shuttle slots that point to shuttle NPC creatures rather than shuttleport structures; the object database remains otherwise untouched and ScheduleShuttleTask rebuilds valid structure IDs after load.
+	ZoneServer* zoneServer = zone->getZoneServer();
+	bool hasLegacyShuttleID = false;
+	if (zoneServer != nullptr) {
+		for (int i = 0; i < 2; ++i) {
+			uint64 storedShuttleID = i == 0 ? shuttleID : secondShuttleID;
+			if (storedShuttleID == 0)
+				continue;
+
+			ManagedReference<SceneObject*> storedShuttle = zoneServer->getObject(storedShuttleID);
+			if (storedShuttle != nullptr && storedShuttle->isCreatureObject()) {
+				hasLegacyShuttleID = true;
+				break;
+			}
+		}
+	}
+
+	if (hasLegacyShuttleID) {
+		info(true) << "Clearing legacy shuttle creature IDs from city " << getCityRegionName()
+				<< " before shuttleport structures are re-registered.";
+		shuttleID = 0;
+		secondShuttleID = 0;
+		hasShuttle = false;
+		extraShuttleGraceDeadline = 0;
+	}
+	//--->END OF MODIFICATION<--
+
 	zone->addCityRegionToUpdate(_this.getReferenceUnsafeStaticCast());
 
 	if (isRegistered())
 		zone->getPlanetManager()->addCityRegion(_this.getReferenceUnsafeStaticCast());
+
+	// 10/12/26 klambright - Restores the persisted two-day extra-shuttle cleanup timer when a city region is loaded after restart.
+	if (extraShuttleGraceDeadline > 0) {
+		CityManager* cityManager = zone->getZoneServer()->getCityManager();
+		if (cityManager != nullptr)
+			cityManager->scheduleExtraShuttleCleanup(_this.getReferenceUnsafeStaticCast());
+	}
+
+	// klambright - Migrates persisted city regions to the new rank-specific radii on load so existing cities adopt the configured sizes without waiting for a rank change; reads through CityManager's validated API.
+	if (cityRank > 0 && cityRank <= CityManager::PLANETARY_CAPITAL && getRegionsCount() > 0) {
+		CityManager* cityManager = zone->getZoneServer()->getCityManager();
+		float configuredRadius = cityManager == nullptr ? 0.0f : cityManager->getCityRadiusForRank(cityRank);
+		if (configuredRadius <= 0.0f)
+			return;
+
+		if (fabs(getRadius() - configuredRadius) > 0.1f)
+			setRadius(configuredRadius);
+	}
+	// continue
 }
 
 void CityRegionImplementation::initialize() {
@@ -72,6 +123,10 @@ void CityRegionImplementation::initialize() {
 	mayorID = 0;
 
 	shuttleID = 0;
+	// 10/12/26 klambright - Initializes persisted second-shuttle tracking and its contraction deadline alongside the legacy primary shuttle state.
+	secondShuttleID = 0;
+	extraShuttleGraceDeadline = 0;
+	// continue
 
 	hasShuttle = false;
 
@@ -225,15 +280,22 @@ void CityRegionImplementation::notifyEnter(SceneObject* object) {
 		StringIdChatParameter params("city/city", "city_enter_city"); //You have entered %TT (%TO).
 		params.setTT(getCityRegionName());
 
-		UnicodeString strRank = StringIdManager::instance()->getStringId(String("@city/city:rank" + String::valueOf(cityRank)).hashCode());
+		// 10/10/26 klambright - Uses literal rank names and generated specialization display labels in city-entry notifications, avoiding client TRE changes for newly introduced ranks/combinations.
+		CityManager* cityManager = zone->getZoneServer()->getCityManager();
+		UnicodeString strRank = cityManager->getCityRankName(cityRank);
 
 		if (citySpecialization.isEmpty()) {
 			params.setTO(strRank);
 		}
 		else {
-			UnicodeString citySpec = StringIdManager::instance()->getStringId(citySpecialization.hashCode());
+			const CitySpecialization* selectedSpec = cityManager->getCitySpecialization(citySpecialization);
+			String displayName = selectedSpec == nullptr ? citySpecialization : selectedSpec->getDisplayName();
+			UnicodeString citySpec = displayName.beginsWith("@")
+					? StringIdManager::instance()->getStringId(displayName.hashCode())
+					: UnicodeString(displayName);
 			params.setTO(strRank + ", " + citySpec);
 		}
+		// continue
 
 		creature->sendSystemMessage(params);
 
@@ -869,6 +931,22 @@ void CityRegionImplementation::resetVotingPeriod() {
 	nextInauguration.addMiliTime(CityManagerImplementation::cityVotingCycles * CityManagerImplementation::cityUpdateInterval * 60000);
 }
 
+// 10/10/26 klambright - Interpolates each configured specialization bonus from its rank-5 baseline to its explicit rank-9 cap at 25/50/75/100 percent for ranks 6-9; keeps the resulting skill mods capped and applies one aggregated modifier per selected bonus.
+static int getCitySpecializationCap(const String& skillMod, int baseValue) {
+	if (skillMod == "private_spec_samplesize")
+		return 40;
+	if (skillMod == "private_spec_samplerate")
+		return 20;
+	if (skillMod == "private_spec_assembly" || skillMod == "private_medical_rating"
+			|| skillMod == "private_spec_cloning" || skillMod == "private_spec_experimentation"
+			|| skillMod == "private_spec_missions" || skillMod == "private_spec_entertainer")
+		return 25;
+	if (skillMod == "private_defense")
+		return 140;
+
+	return baseValue;
+}
+
 void CityRegionImplementation::applySpecializationModifiers(CreatureObject* creature) {
 	if (getZone() == nullptr)
 		return;
@@ -876,8 +954,10 @@ void CityRegionImplementation::applySpecializationModifiers(CreatureObject* crea
 	CityManager* cityManager = getZone()->getZoneServer()->getCityManager();
 	const CitySpecialization* cityspec = cityManager->getCitySpecialization(citySpecialization);
 
-	if (cityspec == nullptr)
+	if (cityRank < RANK_SPACEPORT_TOWNSHIP || cityspec == nullptr) {
+		removeSpecializationModifiers(creature);
 		return;
+	}
 
 	if (isBanned(creature->getObjectID())) {
 		return;
@@ -905,10 +985,14 @@ void CityRegionImplementation::applySpecializationModifiers(CreatureObject* crea
 			if (entry.getKey() == "private_defense" && !city->isMilitiaMember(creatureReference->getObjectID()))
 				continue;
 
-			creatureReference->addSkillMod(SkillModManager::CITY, entry.getKey(), entry.getValue());
+			int cap = getCitySpecializationCap(entry.getKey(), entry.getValue());
+			float rankProgress = Math::min((city->getCityRank() - RANK_SPACEPORT_TOWNSHIP) / 4.0f, 1.0f);
+			int modifier = entry.getValue() + (int) round((cap - entry.getValue()) * rankProgress);
+			creatureReference->addSkillMod(SkillModManager::CITY, entry.getKey(), Math::min(modifier, cap));
 		}
 	}, lambdaName);
 }
+//--->END OF MODIFICATION - kl<---
 
 void CityRegionImplementation::removeSpecializationModifiers(CreatureObject* creature) {
 	Reference<CreatureObject*> creatureReference = creature;

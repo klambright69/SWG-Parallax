@@ -22,7 +22,8 @@ protected:
 	};
 
 	// @TODO Move this to a proper configuration manager so no rebuild is necessary
-	static const bool GLOBALSAFETYDEPOSIT = false;
+	// 092726 AI / klambright: Allow BankTerminalMenuComponent.cpp to open a player's joined safety-deposit container from bank terminals on any planet.
+	static const bool GLOBALSAFETYDEPOSIT = true;
 
 public:
 

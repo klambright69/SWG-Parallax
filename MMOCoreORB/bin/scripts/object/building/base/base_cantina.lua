@@ -42,7 +42,16 @@
 
 
 object_building_base_base_cantina = object_building_base_shared_base_cantina:new {
-
+	skillMods = {	
+		{"private_med_wound_mind", 20},
+		{"private_buff_mind", 100},
+		{"private_med_battle_fatigue", 5},
+		{"private_medical_rating", 100},
+		{"private_med_wound_health", 100},
+		{"private_med_wound_action", 100},
+		{"private_safe_logout", 1}
+	},
+	planetaryMapCategory = "cantina"		
 }
 
 ObjectTemplates:addTemplate(object_building_base_base_cantina, "object/building/base/base_cantina.iff")

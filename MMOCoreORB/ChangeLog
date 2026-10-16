@@ -1,0 +1,6 @@
+--changed BuildingObject.idl to set public static final int MAXPLAYERITEMS =
+1500 instead of 400.
+-- Also set BuildingObjectImplementation.cpp:1054 to set civic structures from
+250 items to 1500 items and line 1071 to increase the lot allocation from *100
+to *300.
+--Noted same changes in comments of StructureManager.cpp.

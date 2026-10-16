@@ -2616,6 +2616,10 @@ bool AiAgentImplementation::findNextPosition(float maxDistance, bool walk) {
 
 	if ((walk && movementState != AiAgent::FLEEING) || posture == CreaturePosture::PRONE)
 		newSpeed = walkSpeed;
+// added patrolling data - klambright 9/21/26
+//	if (movementState == AiAgent::PATROLLING)
+//		newSpeed *= 0.7f;
+//end of add - kl
 
 	if (hasState(CreatureState::IMMOBILIZED))
 		newSpeed = newSpeed / 2.f;
@@ -2656,12 +2660,14 @@ bool AiAgentImplementation::findNextPosition(float maxDistance, bool walk) {
 
 		setCurrentSpeed(0.f);
 		updateLocomotion();
-
+		
 		return false;
 	}
 
 	// Handle speed up and slow down
 	if ((((currentSpeed * currentSpeed) * maxSquared) > endDistanceSq) && newSpeed > 0.4f) {
+	float stoppingDistance = Math::max(maxDistance, currentSpeed * 2.f);
+
 		newSpeed = Math::max(0.2f, (currentSpeed - 0.4f));
 	} else if (currentSpeed < newSpeed) {
 		float speedDiff = newSpeed - currentSpeed;
@@ -2811,7 +2817,7 @@ bool AiAgentImplementation::findNextPosition(float maxDistance, bool walk) {
 		path->remove(1);
 
 #ifdef SHOW_NEXT_POSITION
-		if (movementMarkers.size() > 1) {
+		if (movementMarkers.size() > 1) {src/server/zone/objects/creature/ai/
 			ManagedReference<SceneObject*> marker = movementMarkers.get(0);
 
 			Locker clock(marker, asAiAgent());
@@ -3250,7 +3256,7 @@ bool AiAgentImplementation::generatePatrol(int num, float dist) {
 				PatrolPoint point(result);
 
 				if (point.getPositionX() == currentPosition.getX() && point.getPositionY() == currentPosition.getY())
-					continue;
+				continue;
 
 				addPatrolPoint(point);
 			}
@@ -3478,11 +3484,12 @@ int AiAgentImplementation::setDestination() {
 
 			break;
 		case AiAgent::PATROLLING:
-			// info(true) << " ID: " << getObjectID() << " Patrolling - Patrol points size = " << getPatrolPointSize();
+			 info(true) << " ID: " << getObjectID() << " Patrolling - Patrol points size = " << getPatrolPointSize();
 
 			if (getPatrolPointSize() == 0) {
-				setPatrolPoints(savedPatrolPoints);
-				clearSavedPatrolPoints();
+			setPatrolPoints(savedPatrolPoints);
+			//clearSavedPatrolPoints();
+			
 			}
 
 			if (isWaiting()) {

@@ -43,6 +43,9 @@ namespace scene {
 		int getWorldPositionY(lua_State* L);
 		int getObjectID(lua_State* L);
 		int getParentID(lua_State* L);
+		// 10/15/26 klambright - Adds a Lua getCityRegion() that returns the CityRegion a player is currently inside (set by CityRegionImplementation::notifyEnter) even when the city is not registered on the planetary map, because getCityRegionAt only searches PlanetManager's regionMap, which holds registered cities only. Used by screenplays/cities/city_overhead_traffic.lua; registered in LuaSceneObject.cpp and LuaCreatureObject.cpp.
+		int getCityRegion(lua_State* L);
+		//--->END OF MODIFICATION - kl<-- continue
 		int isInRange(lua_State* L);
 		int isInRangeWithObject(lua_State* L);
 		int isInRangeWithObject3d(lua_State* L);

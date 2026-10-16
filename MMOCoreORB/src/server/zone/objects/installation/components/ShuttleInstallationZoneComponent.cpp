@@ -57,12 +57,15 @@ void ShuttleInstallationZoneComponent::destroyObjectFromWorld(SceneObject* scene
 				ManagedReference<PlanetManager*> planetManager = zone->getPlanetManager();
 
 				if (cityRegion != nullptr) {
-
-					planetManager->removePlayerCityTravelPoint(cityRegion->getCityRegionName());
-
-					Locker clocker(cityRegion, sceneObject);
-
-					cityRegion->removeShuttleInstallation();
+					// 10/12/26 klambright - Captures and clears the destroyed shuttle's ID under the city lock, then removes only its named travel point so one remaining shuttle keeps its route available.
+					String travelPointName;
+					{
+						Locker clocker(cityRegion, sceneObject);
+						travelPointName = cityRegion->getShuttleTravelPointName(sceneObject->getObjectID());
+						cityRegion->removeShuttleInstallation(sceneObject->getObjectID());
+					}
+					planetManager->removePlayerCityTravelPoint(travelPointName);
+					//--->END OF MODIFICATION - kl<--
 				}
 
 				SortedVector < ManagedReference<SceneObject*> > *childObjects = structureObject->getChildObjects();

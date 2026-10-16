@@ -25,8 +25,17 @@ registerScreenPlay("AbandonedRebelBaseScreenPlay", true)
 function AbandonedRebelBaseScreenPlay:start()
 	if (isZoneEnabled(self.planet)) then
 		self:spawnMobiles()
+		-- 09/25/26 - AI / klambright: Adds the persistent Abandoned Rebel Base shuttleport at the coordinates already configured in planet_manager.lua, using the dedicated Dantooine wrapper so the standard shuttle, travel terminal, and ticket collector are spawned together; this interacts with the Abandoned Rebel Base screenplay and Dantooine travel routing.
+		self:spawnSceneObjects()
+		--->END OF MODIFICATION<---
 	end
 end
+
+-- 09/25/26 - AI / klambright: Moves the Abandoned Rebel Base shuttleport scene spawn to x -6651, y 5506, z 30 while preserving its existing orientation, standard shuttleport appearance, and child-object arrangement; this interacts with the Dantooine POI screenplay, travel routing, and dedicated Dantooine shuttleport object template.
+function AbandonedRebelBaseScreenPlay:spawnSceneObjects()
+	spawnSceneObject(self.planet, "object/building/dantooine/shuttleport_dantooine.iff", -6651, 30.0, 5506, 0, math.rad(0))
+end
+--->END OF MODIFICATION<---
 
 function AbandonedRebelBaseScreenPlay:spawnMobiles()
 	local mobiles = self.mobiles

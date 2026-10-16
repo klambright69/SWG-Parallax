@@ -56,14 +56,26 @@ function JunkDealer:getEligibleJunk(pPlayer, dealerType, skipItem)
 		return junkList
 	end
 
+	-- 10/04/26 - AI / klambright
+	-- Excludes weapon and armor item categories from generic-dealer offers while leaving specialist junk dealer categories unchanged.
+	-- This is the shared eligibility path used to populate both the generic dealer conversation option and sale selection;
+	-- type constants correspond to weapon, armor, and their upgrade/powerup classifications in SceneObjectType.h.
 	for i = 0, SceneObject(pInventory):getContainerObjectsSize() - 1, 1 do
 		local pItem = SceneObject(pInventory):getContainerObject(i)
 
 		if pItem ~= nil then
 			local tano = TangibleObject(pItem)
 			local sceno = SceneObject(pItem)
+			local gameObjectType = sceno:getGameObjectType()
+			local isWeaponOrArmor = (gameObjectType >= 0x100 and gameObjectType <= 0x108)
+				or (gameObjectType & 0xFFFF0000) == 0x20000
+				or gameObjectType == 0x800A
+				or gameObjectType == 0x800B
+				or (gameObjectType & 0xFFFF0000) == 0x80000
+				or (gameObjectType & 0xFFFF0000) == 0x100000
+			local isExcludedForGenericDealer = dealerNum == 1 and isWeaponOrArmor
 
-			if sceno:getObjectID() ~= skipItem then
+			if sceno:getObjectID() ~= skipItem and not isExcludedForGenericDealer then
 				if tano:getJunkDealerNeeded() & dealerNum > 0 and tano:getCraftersName() == "" and not tano:isBroken() and not tano:isSliced() and not tano:isNoTrade() and sceno:getContainerObjectsSize() == 0 then
 					local name = sceno:getDisplayedName()
 					local value = tano:getJunkValue()
@@ -73,6 +85,7 @@ function JunkDealer:getEligibleJunk(pPlayer, dealerType, skipItem)
 			end
 		end
 	end
+	--->END OF MODIFICATION<--
 
 	return junkList
 end

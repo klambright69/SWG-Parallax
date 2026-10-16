@@ -754,7 +754,7 @@ public:
 			if (controlDevice->getPatrolPointSize() == 0) {
 				return FAILURE;
 			}
-
+			
 			controlDevice->setLastCommandTarget(nullptr);
 
 			agent->setFollowObject(nullptr);

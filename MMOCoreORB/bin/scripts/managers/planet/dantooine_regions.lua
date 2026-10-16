@@ -18,7 +18,7 @@ dantooine_regions = {
 	{"eastedge_dantooine_nobuild", 7640, -7640, {RECTANGLE, 8000, 7640}, NOSPAWNAREA + NOBUILDZONEAREA},
 	{"northedge_dantooine_nobuild", -8000, 7640, {RECTANGLE, 8000, 8000}, NOSPAWNAREA + NOBUILDZONEAREA},
 	{"southedge_dantooine_nobuild", -7641, -8000, {RECTANGLE, 8000, -7640}, NOSPAWNAREA + NOBUILDZONEAREA},
-	{"dantooine_the_warren_nobuild_1", -555, -3834, {CIRCLE, 250}, NOSPAWNAREA + NOBUILDZONEAREA},
+	{"dantooine_the_warren_nobuild_1", -555, -3834, {CIRCLE, 50}, NOSPAWNAREA + NOBUILDZONEAREA},
 	{"westedge_dantooine_nobuild", -8000, -8000, {RECTANGLE, -7640, 7640}, NOSPAWNAREA + NOBUILDZONEAREA},
 
 	-- Named Regions, POIs and Decor

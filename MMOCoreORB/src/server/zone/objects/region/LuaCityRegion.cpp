@@ -8,6 +8,9 @@ Luna<LuaCityRegion>::RegType LuaCityRegion::Register[] = {
 		{ "_setObject", &LuaCityRegion::_setObject },
 		{ "_getObject", &LuaCityRegion::_getObject },
 		{ "isClientRegion", &LuaCityRegion::isClientRegion },
+		// 10/13/26 klambright - Exposes CityRegion::getCityRank() to Lua so screenplays/cities/city_overhead_traffic.lua can limit overhead traffic and sound to rank 7+ cities; interacts with CityRegion.idl and the CityRegion() Lua wrapper in object_manager.lua.
+		{ "getCityRank", &LuaCityRegion::getCityRank },
+		//--->END OF MODIFICATION - kl<-- continue
 		{ 0, 0 }
 };
 
@@ -40,3 +43,11 @@ int LuaCityRegion::isClientRegion(lua_State* L) {
 
 	return 1;
 }
+
+// 10/13/26 klambright - Exposes CityRegion::getCityRank() to Lua so screenplays/cities/city_overhead_traffic.lua can limit overhead traffic and sound to rank 7+ cities; interacts with CityRegion.idl and the CityRegion() Lua wrapper in object_manager.lua.
+int LuaCityRegion::getCityRank(lua_State* L) {
+	lua_pushinteger(L, realObject->getCityRank());
+
+	return 1;
+}
+//--->END OF MODIFICATION - kl<--

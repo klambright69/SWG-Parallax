@@ -1794,8 +1794,16 @@ void AuctionManagerImplementation::getData(CreatureObject* player, int locationT
 		return msg;
 	};
 
-	if (player->getAuctionSearchTask().get() != nullptr)
+	// 09/26/26 - AI / klambright: Reports the existing asynchronous-search guard, which silently rejects follow-up queries and can prevent a bazaar response; interacts with player auction state and AuctionSearchTask scheduling.
+	if (player->getAuctionSearchTask().get() != nullptr) {
+		if (player->getZone() != nullptr && player->getZone()->getZoneName() == "dathomir") {
+			auto msg = Logger::console.info(true);
+			msg << "[VillageBazaarDiagnostic] Query rejected: an auction search task is already active.";
+			msg.flush();
+		}
 		return;
+	}
+	// --->END OF MODIFICATION<---
 
 	ManagedReference<TangibleObject*> vendorInUse = (zoneServer->getObject(vendorObjectID)).castTo<TangibleObject*>();
 
@@ -1806,8 +1814,16 @@ void AuctionManagerImplementation::getData(CreatureObject* player, int locationT
 
 	ManagedReference<SceneObject*> parent = vendorInUse->getRootParent();
 
-	if (parent != nullptr && parent != player->getRootParent())
+	// 09/26/26 - AI / klambright: Reports the silent terminal-root mismatch rejection for Dathomir auction searches; interacts with terminal placement, player root-parent checks, and bazaar lookup.
+	if (parent != nullptr && parent != player->getRootParent()) {
+		if (player->getZone() != nullptr && player->getZone()->getZoneName() == "dathomir") {
+			auto msg = Logger::console.info(true);
+			msg << "[VillageBazaarDiagnostic] Query rejected: terminal root parent does not match the player's.";
+			msg.flush();
+		}
 		return;
+	}
+	// --->END OF MODIFICATION<---
 
 	if(player->getZone() == nullptr) {
 		errorMessage() << "Player not in a zone.";
@@ -1815,8 +1831,16 @@ void AuctionManagerImplementation::getData(CreatureObject* player, int locationT
 	}
 
 	ManagedReference<BuildingObject*> rootParent = cast<BuildingObject*>(parent.get());
-	if(rootParent != nullptr && !rootParent->isAllowedEntry(player))
+	// 09/26/26 - AI / klambright: Reports silent building-access rejection for Dathomir auction searches; interacts with building access checks before the market response task is scheduled.
+	if(rootParent != nullptr && !rootParent->isAllowedEntry(player)) {
+		if (player->getZone()->getZoneName() == "dathomir") {
+			auto msg = Logger::console.info(true);
+			msg << "[VillageBazaarDiagnostic] Query rejected: player is not allowed into the terminal's building.";
+			msg.flush();
+		}
 		return;
+	}
+	// --->END OF MODIFICATION<---
 
 	//Handle Merchant XP for players using other players vendors...
 	if (!vendorInUse->isBazaarTerminal()) {
@@ -1861,9 +1885,25 @@ void AuctionManagerImplementation::getData(CreatureObject* player, int locationT
 	AuctionSearchTask* task = new AuctionSearchTask(_this.getReferenceUnsafeStaticCast(), player, vendorInUse, planet, region, vendor, searchType, itemCategory, filterText, minPrice, maxPrice, includeEntranceFee, clientCounter, offset);
 	player->setAuctionSearchTask(task);
 	task->schedule(100);
+	// 09/26/26 - AI / klambright: Confirms a Dathomir auction query passed server validation and its asynchronous response task was scheduled; interacts with AuctionSearchTask and the terminal's market query.
+	if (player->getZone()->getZoneName() == "dathomir") {
+		auto msg = Logger::console.info(true);
+		msg << "[VillageBazaarDiagnostic] Query accepted and response task scheduled: terminal=" << vendorObjectID << ", locationType=" << locationType;
+		msg.flush();
+	}
+	// --->END OF MODIFICATION<---
 }
 
 void AuctionManagerImplementation::getAuctionData(CreatureObject* player, SceneObject* usedVendor, const String& planet, const String& region, SceneObject* vendor, int searchType, uint32 itemCategory, const UnicodeString& filterText, int minPrice, int maxPrice, bool includeEntranceFee, int clientCounter, int offset) {
+	// 09/26/26 - AI / klambright: Logs asynchronous Dathomir auction-query execution and whether the response is sent, distinguishing task/response failures from terminal rejection; interacts with AuctionSearchTask, auction lookup, and client messaging.
+	bool villageBazaarDiagnostic = player->getZone() != nullptr && player->getZone()->getZoneName() == "dathomir";
+	if (villageBazaarDiagnostic) {
+		auto msg = Logger::console.info(true);
+		msg << "[VillageBazaarDiagnostic] Building auction response: terminal=" << usedVendor->getObjectID() << ", planet=" << planet << ", region=" << region;
+		msg.flush();
+	}
+	// --->END OF MODIFICATION<---
+
 	TerminalListVector terminalList;
 
 	if (usedVendor->isVendor()) {
@@ -1915,6 +1955,21 @@ void AuctionManagerImplementation::getAuctionData(CreatureObject* player, SceneO
 
 	if (msg != nullptr) {
 		player->sendMessage(msg);
+		// 09/26/26 - AI / klambright: Confirms the Dathomir auction response message was sent to the client; interacts with the result-building path and client UI response.
+		if (villageBazaarDiagnostic) {
+			auto diagnostic = Logger::console.info(true);
+			diagnostic << "[VillageBazaarDiagnostic] Auction response sent.";
+			diagnostic.flush();
+		}
+		// --->END OF MODIFICATION<---
+	} else {
+		// 09/26/26 - AI / klambright: Reports a null auction response message for Dathomir searches; interacts with response construction and explains a request that reaches the server but produces no client window.
+		if (villageBazaarDiagnostic) {
+			auto diagnostic = Logger::console.info(true);
+			diagnostic << "[VillageBazaarDiagnostic] Auction response was not created.";
+			diagnostic.flush();
+		}
+		// --->END OF MODIFICATION<---
 	}
 }
 

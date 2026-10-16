@@ -140,6 +140,9 @@ function TatooineWayfarScreenPlay:spawnSceneObjects()
 
 	--Tavern
 	spawnSceneObject(self.planet, "object/tangible/furniture/all/frn_all_plant_potted_lg_s4.iff", -0.8, -4.0, 1.7, 1499423, math.rad(180) )
+	-- 09/25/26 - AI / klambright: Moves the Wayfar shuttleport scene object to (-5060, 74.5, -6543) and rotates it to face due west on the Tatooine map so the spawned shuttle follows the same standard NPC transport behavior; this interacts with the Wayfar city screenplay and the Tatooine shuttleport building template.
+	spawnSceneObject(self.planet, "object/building/tatooine/shuttleport_tatooine.iff", -5060, 74.5, -6543, 0, math.rad(270))
+	--->END OF MODIFICATION<---
 end
 
 function TatooineWayfarScreenPlay:spawnMobiles()

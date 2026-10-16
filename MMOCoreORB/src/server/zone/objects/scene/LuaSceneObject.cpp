@@ -7,6 +7,7 @@
 
 #include "server/zone/objects/scene/LuaSceneObject.h"
 #include "server/zone/objects/scene/SceneObject.h"
+#include "server/zone/objects/region/CityRegion.h"
 #include "server/zone/objects/creature/CreatureObject.h"
 #include "server/zone/managers/stringid/StringIdManager.h"
 #include "server/zone/managers/director/DirectorManager.h"
@@ -33,6 +34,9 @@ Luna<LuaSceneObject>::RegType LuaSceneObject::Register[] = {
 		{ "getWorldPositionY", &LuaSceneObject::getWorldPositionY },
 		{ "getWorldPositionZ", &LuaSceneObject::getWorldPositionZ },
 		{ "getParentID", &LuaSceneObject::getParentID },
+		// 10/15/26 klambright - Adds a Lua getCityRegion() that returns the CityRegion a player is currently inside (set by CityRegionImplementation::notifyEnter) even when the city is not registered on the planetary map, because getCityRegionAt only searches PlanetManager's regionMap, which holds registered cities only. Used by screenplays/cities/city_overhead_traffic.lua; registered in LuaSceneObject.cpp and LuaCreatureObject.cpp.
+		{ "getCityRegion", &LuaSceneObject::getCityRegion },
+		//--->END OF MODIFICATION - kl<-- continue
 		{ "isInRange", &LuaSceneObject::isInRange },
 		{ "isInRangeWithObject", &LuaSceneObject::isInRangeWithObject },
 		{ "isInRangeWithObject3d", &LuaSceneObject::isInRangeWithObject3d },
@@ -302,6 +306,19 @@ int LuaSceneObject::getObjectID(lua_State* L) {
 
 	return 1;
 }
+
+// 10/15/26 klambright - Adds a Lua getCityRegion() that returns the CityRegion a player is currently inside (set by CityRegionImplementation::notifyEnter) even when the city is not registered on the planetary map, because getCityRegionAt only searches PlanetManager's regionMap, which holds registered cities only. Used by screenplays/cities/city_overhead_traffic.lua; registered in LuaSceneObject.cpp and LuaCreatureObject.cpp.
+int LuaSceneObject::getCityRegion(lua_State* L) {
+	ManagedReference<CityRegion*> city = realObject->getCityRegion().get();
+
+	if (city == nullptr)
+		lua_pushnil(L);
+	else
+		lua_pushlightuserdata(L, city.get());
+
+	return 1;
+}
+//--->END OF MODIFICATION - kl<-- continue
 
 int LuaSceneObject::getParentID(lua_State* L) {
 	lua_pushinteger(L, realObject->getParentID());

@@ -45,6 +45,9 @@
 --Children folder includes
 includeFile("building/base/serverobjects.lua")
 includeFile("building/corellia/serverobjects.lua")
+-- 09/25/26 - AI / klambright: Includes the dedicated Dantooine shuttleport server template so the Abandoned Rebel Base scene can instantiate its persistent shuttle, travel terminal, and ticket collector; this interacts with the building object registry and Dantooine POI screenplay.
+includeFile("building/dantooine/serverobjects.lua")
+--->END OF MODIFICATION<---
 includeFile("building/dathomir/serverobjects.lua")
 includeFile("building/endor/serverobjects.lua")
 includeFile("building/faction_perk/serverobjects.lua")

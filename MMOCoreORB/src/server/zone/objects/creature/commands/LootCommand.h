@@ -26,7 +26,7 @@ public:
 	// "/loot area" sweeps every corpse the player may loot within this radius. The
 	// single-target path allows 16m, so this stays just inside it and no corpse is
 	// reachable by the sweep that could not be looted one at a time.
-	static constexpr float AREALOOTRANGE = 15.f;
+	static constexpr float AREALOOTRANGE = 32.f;
 
 	// Defensive bound on a single sweep so an AoE grinder standing in a pile of
 	// corpses cannot stall the command queue. Whatever is left over is reported and
@@ -71,7 +71,7 @@ public:
 		if (!agent->isDead() || creature->isDead())
 			return GENERALERROR;
 
-		if (!checkDistance(agent, creature, 16)) {
+		if (!checkDistance(agent, creature, 32)) {
 			creature->sendSystemMessage("@error_message:target_out_of_range"); //"Your target is out of range for this action."
 			return GENERALERROR;
 		}

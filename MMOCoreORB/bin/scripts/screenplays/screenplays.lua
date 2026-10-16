@@ -590,6 +590,9 @@ includeFile("cities/cantinas/bartender_conv_handler.lua")
 
 -- Cities
 includeFile("cities/city.lua")
+-- 10/13/26 klambright - Loads the rank 7+ player city overhead traffic and flyby sound screenplay (cities/city_overhead_traffic.lua) so PlayerTriggers can call it; it must load before any login trigger fires.
+includeFile("cities/city_overhead_traffic.lua")
+--->END OF MODIFICATION - kl<--
 includeFile("cities/corellia_bela_vistal.lua")
 includeFile("cities/corellia_coronet.lua")
 includeFile("cities/corellia_doaba_guerfel.lua")
@@ -634,6 +637,9 @@ includeFile("poi/dantooine_dantari_village.lua")
 includeFile("poi/dantooine_mokk_stronghold.lua")
 includeFile("poi/dathomir_crash_site.lua")
 includeFile("poi/dathomir_imperial_prison.lua")
+-- 09/25/26 - AI / klambright: Loads the persistent Dathomir Village shuttleport screenplay during server startup so it creates the shuttleport and child transport objects and registers its NPC travel service; this interacts with screenplays.lua, the Dathomir object registry, and planet_manager.lua.
+includeFile("poi/dathomir_village_shuttleport.lua")
+--->END OF MODIFICATION<---
 includeFile("poi/dathomir_nightsister_stronghold.lua")
 includeFile("poi/dathomir_nightsister_labor_camp.lua")
 includeFile("poi/dathomir_nightsister_vs_singing_mountain.lua")

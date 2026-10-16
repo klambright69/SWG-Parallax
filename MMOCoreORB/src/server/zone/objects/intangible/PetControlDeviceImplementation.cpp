@@ -556,8 +556,10 @@ void PetControlDeviceImplementation::storeObject(CreatureObject* player, bool fo
 
 	if (!force) {
 		// Fail if pet or player are in combat or if the pet is dead, unless forced
-		if (pet->isInCombat() || player->isInCombat() || player->isDead())
+		// 10/05/26 AI / klambright: Permit storing any creature mount trained through this pet control device while either it or its owner is in combat; non-mount pets remain blocked in combat, and dead players remain unable to store. This condition is part of the pet control device store flow used by pet menu and dismount actions. After it passes, this method applies the existing call/store cooldown, dismounts the owner when riding this pet, and starts StorePetTask.cpp to clear combat state and remove the pet from the world.
+		if (((pet->isInCombat() || player->isInCombat()) && !isTrainedAsMount()) || player->isDead())
 			return;
+		// --->END OF MODIFICATION<--
 
 		// Check cooldown for call or store
 		if (!player->checkCooldownRecovery("petCallOrStoreCooldown")) {

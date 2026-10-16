@@ -35,13 +35,19 @@ public:
 
 		SuiListBox* listBox = cast<SuiListBox*>(suiBox);
 
-		if (index < 0 || index > listBox->getMenuSize()) {
+		// 10/10/26 klambright - Rejects the end-exclusive list index before resolving a menu item, preventing an invalid SUI selection from reaching the toggle handler.
+		if (index < 0 || index >= listBox->getMenuSize()) {
 			session->cancelSession();
 			return;
 		}
 
-		String choice = listBox->getMenuItemName(index);
-		session->sendConfirmationBox(choice);
+		// klambright - Routes specialization rows by their stable bit value instead of their localized display label; action rows retain their textual commands.
+		unsigned long long selectionBit = listBox->getMenuObjectID(index);
+		if (selectionBit != 0)
+			session->toggleSpecialization("MASK:" + String::valueOf(selectionBit));
+		else
+			session->sendConfirmationBox(listBox->getMenuItemName(index));
+		//--->END OF MODIFICATION- kl<--
 	}
 };
 

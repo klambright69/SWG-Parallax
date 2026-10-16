@@ -59,6 +59,14 @@ public:
 			
 		Locker locker(player);
 
+		// 09/26/26 - AI / klambright: Logs arrival of auction-query packets with their terminal ID and location type so the Village Bazaar failure can be distinguished from a client request that never reaches the server; interacts with the auction packet callback and AuctionManager request handling.
+		if (player->getZone() != nullptr && player->getZone()->getZoneName() == "dathomir") {
+			auto msg = Logger::console.info(true);
+			msg << "[VillageBazaarDiagnostic] Auction query received: terminal=" << vendorID << ", locationType=" << locationType << ", searchType=" << searchType;
+			msg.flush();
+		}
+		// --->END OF MODIFICATION<---
+
 		AuctionManager* auctionManager = server->getZoneServer()->getAuctionManager();
 
 		if (auctionManager != nullptr)

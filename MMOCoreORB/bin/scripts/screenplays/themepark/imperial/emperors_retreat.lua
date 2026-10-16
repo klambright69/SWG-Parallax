@@ -18,6 +18,9 @@ end
 function EmperorsRetreatScreenPlay:spawnSceneObjects()
 	local elevatorUp = spawnSceneObject("naboo", "object/tangible/terminal/terminal_elevator_up.iff", 13, 1, -36, 1418877, 1, 0, 0, 0)
 	spawnSceneObject("naboo", "object/tangible/terminal/terminal_elevator_down.iff", 13, 20.5, -36, 1418877, 1, 0, 0, 0)
+	-- 09/25/26 - AI / klambright: Keeps the Emperor's Retreat shuttleport at x 2448, y -3937, z 291.5 and sets its heading to 350 degrees to visually align the building and attached shuttle slightly west of map north; this interacts with the Emperor's Retreat screenplay and standard Naboo shuttleport child objects.
+	spawnSceneObject("naboo", "object/building/naboo/shuttleport_naboo.iff", 2448.0, 291.5, -3937.0, 0, math.rad(350))
+	--->END OF MODIFICATION<---
 
 	if (elevatorUp ~= nil) then
 		SceneObject(elevatorUp):setObjectMenuComponent("EmperorElevatorMenuComponent")

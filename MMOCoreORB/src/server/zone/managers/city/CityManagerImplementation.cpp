@@ -10,10 +10,20 @@
 #include "server/zone/Zone.h"
 #include "server/zone/ZoneServer.h"
 #include "server/zone/objects/player/PlayerObject.h"
+// 10/10/26 klambright - Adds ability-list interfaces for server validation that every selected specialization is learned by the acting mayor before a composite city choice is accepted.
+#include "server/zone/objects/player/variables/AbilityList.h"
+#include "server/zone/objects/player/variables/Ability.h"
+// continue
 #include "server/zone/managers/object/ObjectManager.h"
 #include "server/zone/managers/structure/StructureManager.h"
 #include "server/zone/managers/planet/PlanetManager.h"
 #include "server/zone/managers/player/PlayerManager.h"
+// 10/10/26 klambright - Resolves existing base-specialization string IDs when constructing contraction notices; generated combination names remain literal server text.
+#include "server/zone/managers/stringid/StringIdManager.h"
+// continue
+// 10/14/26 AI / klambright - Includes child permissions so legacy persisted shuttle-creature IDs resolve to the structure owner during delayed destruction.
+#include "server/zone/objects/scene/variables/ContainerPermissions.h"
+// continue
 #include "server/zone/objects/structure/StructureObject.h"
 #include "server/zone/objects/region/Region.h"
 #include "server/zone/objects/region/CityRegion.h"
@@ -57,9 +67,40 @@ uint64 CityManagerImplementation::treasuryWithdrawalCooldown = 0;
 byte CityManagerImplementation::cityVotingCycles = 0;
 byte CityManagerImplementation::cityVotingCyclesUntilLocked = 0;
 int CityManagerImplementation::decorationsPerRank = 10;
-int CityManagerImplementation::trainersPerRank = 3;
+// 10/10/26  klambright - Matches the Lua trainer allowance and its absolute cap during initialization before configuration is loaded and prevents ranks 7-9 from raising trainer capacity above threshold.
+int CityManagerImplementation::trainersPerRank = 6;
+int CityManagerImplementation::maximumSkillTrainers = 36;
+// continue
 int CityManagerImplementation::missionTerminalsPerRank = 3;
 float CityManagerImplementation::maintenanceDiscount = 1.0f;
+int CityManagerImplementation::mayoralExperience = 750;
+int CityManagerImplementation::candidateVoteExperience = 300;
+
+// 10/15/26 klambright - Adds a file-local check that identifies the permanent Rank 9, zero-upkeep city "New Canejo" on Dantooine at -883, -4012.
+// The city is matched by zone ("dantooine") and by the world position of its city hall (within 150 m of -883, -4012) rather than by name, so a rename does not break the exemption.
+// Used only inside this file by CityManagerImplementation::processCityUpdate (locks rank 9 and skips contraction/expansion), deductCityMaintenance (skips all upkeep)
+// and sendMaintenanceReport (displays 0 credit costs). It reads the CityRegion zone and city hall (StructureObject) and changes no data itself.
+// If the city hall is removed the city is destroyed through the normal destroyCity path and the exemption no longer applies.
+static bool isPermanentRank9ZeroUpkeepCity(CityRegion* city) {
+	if (city == nullptr)
+		return false;
+
+	Zone* cityZone = city->getZone();
+
+	if (cityZone == nullptr || cityZone->getZoneName().toLowerCase() != "dantooine")
+		return false;
+
+	ManagedReference<StructureObject*> hall = city->getCityHall();
+
+	if (hall == nullptr)
+		return false;
+
+	float dx = hall->getWorldPositionX() - (-883.f);
+	float dy = hall->getWorldPositionY() - (-4012.f);
+
+	return (dx * dx + dy * dy) <= (150.f * 150.f);
+}
+// --->END OF MODIFICATION<--
 
 void CityManagerImplementation::loadLuaConfig() {
 	info("Loading configuration file.", true);
@@ -68,6 +109,9 @@ void CityManagerImplementation::loadLuaConfig() {
 	lua->init();
 
 	lua->runFile("scripts/managers/city_manager.lua");
+	// 10/11/26 klambright - Loads the dedicated numeric-mask display-name matrix before building city specialization records; the matrix is static Lua config and adds no per-city/session allocation.
+	lua->runFile("scripts/managers/city_specializations_matrix.lua");
+	// continue
 
 	LuaObject luaObject = lua->getGlobalObject("CitiesAllowed");
 
@@ -99,8 +143,18 @@ void CityManagerImplementation::loadLuaConfig() {
 	luaObject.pop();
 
 	luaObject = lua->getGlobalObject("CitySpecializations");
-	citySpecializations.readObject(&luaObject);
+	// 10/12/26 klambright - Loads base entries while CitySpecializations is the active Lua stack table; LuaObject accessors read from the stack top.
+	citySpecializations.readBaseSpecializations(&luaObject);
 	luaObject.pop();
+	// continue
+
+	LuaObject specializationMatrix = lua->getGlobalObject("CitySpecializationsMatrix");
+	if (!specializationMatrix.isValidTable())
+		error() << "CitySpecializationsMatrix is missing or invalid after loading scripts/managers/city_specializations_matrix.lua";
+	// 10/12/26 klambright - Loads combination records in a separate stack-top call after the base table has been popped, preventing the matrix from being mistaken for CitySpecializations.
+	citySpecializations.readSpecializationMatrix(&specializationMatrix);
+	specializationMatrix.pop();
+	// continue
 
 	info("Loaded " + String::valueOf(citySpecializations.size()) + " city specializations.", true);
 
@@ -118,9 +172,14 @@ void CityManagerImplementation::loadLuaConfig() {
 	cityVotingDuration = lua->getGlobalInt("CityVotingDuration");
 	treasuryWithdrawalCooldown = lua->getGlobalLong("TreasuryWithdrawalCooldown");
 	cityVotingCycles = lua->getGlobalByte("CityVotingCycles");
+	mayoralExperience = lua->getGlobalInt("MayoralExperience");
+	candidateVoteExperience = lua->getGlobalInt("CandidateVoteExperience");
 	cityVotingCyclesUntilLocked = lua->getGlobalByte("CityVotingCyclesUntilLocked");
 	decorationsPerRank = lua->getGlobalInt("DecorationsPerRank");
 	trainersPerRank = lua->getGlobalInt("TrainersPerRank");
+	// 10/10/26 klambright - Loads the configured hard cap and applies it anywhere trainer capacity is exposed or enforced.
+	maximumSkillTrainers = lua->getGlobalInt("MaximumSkillTrainers");
+	// continue
 	missionTerminalsPerRank = lua->getGlobalInt("MissionTerminalsPerRank");
 	maintenanceDiscount = lua->getGlobalFloat("maintenanceDiscount");
 
@@ -404,24 +463,108 @@ void CityManagerImplementation::promptCitySpecialization(CityRegion* city, Creat
 void CityManagerImplementation::changeCitySpecialization(CityRegion* city, CreatureObject* mayor, const String& spec) {
 	Locker _clock(city, mayor);
 
-	city->setCitySpecialization(spec);
-
 	PlayerObject* ghost = mayor->getPlayerObject().get();
 
-	if (ghost != nullptr && !ghost->isPrivileged())
-		mayor->addCooldown("city_specialization", citySpecializationCooldown); //1 week.
+	// 10/10/26 klambright - Validates rank, selection count, mayor authority, learned specialization abilities, and cooldown server-side before persisting a combo key; this prevents stale or forged SUI selections from applying unsupported modifiers.
+	if (ghost == nullptr || (!city->isMayor(mayor->getObjectID()) && !ghost->isAdmin()))
+		return;
+
+	const CitySpecialization* selectedSpec = nullptr;
+	String specializationToPersist = spec;
+	if (!spec.isEmpty()) {
+		if (city->getCityRank() < SPACEPORT_TOWNSHIP) {
+			mayor->sendSystemMessage("@city/city:no_rank_spec");
+			return;
+		}
+
+		// klambright - Resolves pending session selections by their stable bitmask, then persists the canonical specialization-map key. Legacy direct-key callers continue through the existing lookup path.
+		if (spec.beginsWith("city_mask_")) {
+			uint16 selectionMask = Integer::valueOf(spec.subString(10));
+			selectedSpec = citySpecializations.getBySelectionMask(selectionMask);
+			if (selectedSpec != nullptr)
+				specializationToPersist = selectedSpec->getName();
+		} else {
+			selectedSpec = getCitySpecialization(spec);
+		}
+		// continue
+
+		if (selectedSpec == nullptr) {
+			mayor->sendSystemMessage("Invalid city specialization selection.");
+			return;
+		}
+
+		// 10/11/26 klambright - Enforces the minimum city rank assigned to this mask in city_specializations_matrix.lua, keeping name tier and selection eligibility aligned.
+		if (city->getCityRank() < selectedSpec->getMinimumCityRank()) {
+			mayor->sendSystemMessage("This city rank cannot use the selected specialization combination.");
+			return;
+		}
+		// continue
+
+		uint16 selectedMask = selectedSpec->getSelectionMask();
+		int selectedCount = 0;
+		for (uint16 bits = selectedMask; bits != 0; bits >>= 1)
+			selectedCount += bits & 1;
+
+		int maxCount = city->getCityRank() == SPACEPORT_TOWNSHIP ? 1
+				: city->getCityRank() == INDUSTRIAL_NEO_CITY ? 2
+				: city->getCityRank() == UPPER_CITY_SPIRE ? 4
+				: city->getCityRank() == HIGH_SECTOR_CITADEL ? 6 : 8;
+		if (selectedCount > maxCount) {
+			mayor->sendSystemMessage("The selected specialization count exceeds this city's rank allowance.");
+			return;
+		}
+
+		PlayerObject* abilityGhost = ghost;
+		if (!city->isMayor(mayor->getObjectID())) {
+			ManagedReference<CreatureObject*> cityMayor = zoneServer->getObject(city->getMayorID()).castTo<CreatureObject*>();
+			abilityGhost = cityMayor == nullptr ? nullptr : cityMayor->getPlayerObject().get();
+		}
+
+		const AbilityList* abilities = abilityGhost == nullptr ? nullptr : abilityGhost->getAbilityList();
+		uint16 learnedMask = 0;
+		if (abilities != nullptr) {
+			for (int i = 0; i < abilities->size(); ++i) {
+				Reference<const Ability*> ability = abilities->getSafe(i);
+				const String& abilityName = ability->getAbilityName();
+				if (!abilityName.beginsWith("city_spec"))
+					continue;
+
+				const CitySpecialization* baseSpec = getCitySpecialization("@city/city:" + abilityName);
+				if (baseSpec != nullptr)
+					learnedMask |= baseSpec->getSelectionMask();
+			}
+		}
+
+		if ((selectedMask & learnedMask) != selectedMask) {
+			mayor->sendSystemMessage("The mayor must learn every selected city specialization before applying it.");
+			return;
+		}
+
+		if (!ghost->isPrivileged() && !mayor->checkCooldownRecovery("city_specialization")) {
+			StringIdChatParameter cooldownParams("city/city", "spec_time");
+			const Time* timeRemaining = mayor->getCooldownTime("city_specialization");
+			cooldownParams.setTO(String::valueOf(round(fabs(timeRemaining->miliDifference() / 1000.f))) + " seconds");
+			mayor->sendSystemMessage(cooldownParams);
+			return;
+		}
+	}
+
+	city->setCitySpecialization(specializationToPersist);
+	if (!specializationToPersist.isEmpty() && !ghost->isPrivileged())
+		mayor->addCooldown("city_specialization", citySpecializationCooldown);
 
 	StringIdChatParameter params("city/city", "spec_set"); //The city's specialization has been set to %TO.
 
 	if (spec.isEmpty())
 		params.setTO("@city/city:null");
 	else
-		params.setTO(spec);
+		params.setTO(selectedSpec->getDisplayName());
 
 	mayor->sendSystemMessage(params);
 
 	//Resetting the city radius will remove it and reinsert it, updating it to everything in the area.
 	city->setRadius(city->getRadius());
+	// continue
 }
 
 void CityManagerImplementation::sendStatusReport(CityRegion* city, CreatureObject* creature, SceneObject* terminal) {
@@ -457,8 +600,12 @@ void CityManagerImplementation::sendStatusReport(CityRegion* city, CreatureObjec
 
 	if (city->getCitySpecialization().isEmpty())
 		list->addMenuItem("@city/city:specialization_prompt @city/city:null"); //Specialization: None
-	else
-		list->addMenuItem("@city/city:specialization_prompt " + city->getCitySpecialization()); //Specialization:
+	else {
+		// 10/10/26 klambright - Displays the selected single or generated multi-specialization name in the existing city terminal status menu.
+		const CitySpecialization* spec = getCitySpecialization(city->getCitySpecialization());
+		list->addMenuItem("@city/city:specialization_prompt " + (spec == nullptr ? city->getCitySpecialization() : spec->getDisplayName())); //Specialization:
+		// continue
+	}
 
 	list->addMenuItem("@city/city:current_trainers " + String::valueOf(city->getSkillTrainerCount())); // Current Trainer Count:
 	list->addMenuItem("@city/city:current_mt " + String::valueOf(city->getMissionTerminalCount())); // Current Terminal Count:
@@ -773,7 +920,7 @@ void CityManagerImplementation::processCityUpdate(CityRegion* city) {
 
 			if (ghost != nullptr) {
 				TransactionLog trx(TrxCode::EXPERIENCE, mayor);
-				ghost->addExperience(trx, "political", 750, true);
+				ghost->addExperience(trx, "political", mayoralExperience, true);
 			}
 		}
 		updateCityVoting(city);
@@ -785,9 +932,20 @@ void CityManagerImplementation::processCityUpdate(CityRegion* city) {
 
 		int maintainCitizens = citizensPerRank.get(cityRank - 1);
 
-		if (citizens < maintainCitizens) {
+		// 10/15/26 klambright - For the permanent New Canejo city (see isPermanentRank9ZeroUpkeepCity) forces rank 9 and its configured Rank 9 radius (radiusPerRank, city_manager.lua)
+		// and bypasses the citizen-based contractCity/expandCity logic, so the city never changes rank. Treasury, mayor, voting and income tax processing in this function still run normally.
+		// Other cities fall through to the original logic below.
+		if (isPermanentRank9ZeroUpkeepCity(city)) {
+			if (cityRank != PLANETARY_CAPITAL) {
+				city->setCityRank(PLANETARY_CAPITAL);
+				city->setRadius(radiusPerRank.get(PLANETARY_CAPITAL - 1));
+			}
+		// --->END OF MODIFICATION<--
+		// 10/11/26 klambright - Uses the canonical rank-9 limit for advancement now that the legacy METROPOLIS name refers to renamed rank 5.
+		} else if (citizens < maintainCitizens) {
 			contractCity(city);
-		} else if (cityRank < METROPOLIS) {
+		} else if (cityRank < PLANETARY_CAPITAL) {
+			// continue
 			int advanceCitizens = citizensPerRank.get(cityRank);
 
 			if (citizens >= advanceCitizens) {
@@ -843,6 +1001,12 @@ void CityManagerImplementation::processIncomeTax(CityRegion* city) {
 }
 
 void CityManagerImplementation::deductCityMaintenance(CityRegion* city) {
+	// 10/15/26 klambright - Skips the entire periodic upkeep cycle (city hall, civic structures, decorations, mission terminals, trainers, map registration, specialization cost
+	// and the maintenance email) for the permanent New Canejo city, so its treasury is never charged and nothing is decayed or destroyed for non-payment. Called from processCityUpdate.
+	if (isPermanentRank9ZeroUpkeepCity(city))
+		return;
+	// --->END OF MODIFICATION<--
+
 	int totalPaid = 0;
 
 	Locker _lock(city);
@@ -1161,7 +1325,7 @@ void CityManagerImplementation::updateCityVoting(CityRegion* city, bool override
 
 			if (ghost != nullptr) {
 				TransactionLog trx(TrxCode::EXPERIENCE, mayor);
-				ghost->addExperience(trx, "political", votes * 300, true);
+				ghost->addExperience(trx, "political", votes * candidateVoteExperience, true);
 			}
 
 			if (votes > topVotes || (votes == topVotes && candidateID == incumbentID)) {
@@ -1255,6 +1419,8 @@ void CityManagerImplementation::updateCityVoting(CityRegion* city, bool override
 }
 
 void CityManagerImplementation::contractCity(CityRegion* city) {
+	// 10/10/26 klambright - Applies the configured lower-rank radius/capacity and clears every specialization on any rank loss. Rank/radius changes are sent to the mayor and citizens by direct server text and the existing contraction mail; no client string-table additions are required.
+	uint8 previousRank = city->getCityRank();
 	uint8 newRank = city->getCityRank() - 1;
 	bool startedAssessment = false;
 
@@ -1265,58 +1431,174 @@ void CityManagerImplementation::contractCity(CityRegion* city) {
 		city->scheduleCitizenAssessment(oldCityGracePeriod * 60);
 	}
 
-	if (newRank < TOWNSHIP) {
-		city->setCitySpecialization("");
-
+	// klambright - Uses the renamed rank-3 constant when deciding whether rank loss invalidates planetary-map registration; CityRegion retains the old alias for compatibility.
+	if (newRank < previousRank && newRank < HOMESTEAD_SECTOR) {
 		if (city->isRegistered())
 			unregisterCity(city, nullptr);
 	}
+	// continue
 
 	ManagedReference<SceneObject*> obj = zoneServer->getObject(city->getMayorID());
+	CreatureObject* mayor = obj != nullptr && obj->isPlayerCreature() ? obj.castTo<CreatureObject*>() : nullptr;
 
-	if (obj != nullptr && obj->isPlayerCreature()) {
-		CreatureObject* mayor = cast<CreatureObject*> (obj.get());
-
-		ChatManager* chatManager = zoneServer->getChatManager();
-
-		if (startedAssessment) {
-			StringIdChatParameter params("city/city", "city_invalid_body");
-			params.setDI(newRank);
-			UnicodeString subject = "@city/city:city_invalid_subject"; // Zoning Permits Invalid!
-
-			chatManager->sendMail("@city/city:new_city_from", subject, params, mayor->getFirstName(), nullptr);
-		}
-
-		if (newRank != city->getCityRank()) {
-			//Send out contraction mail.
-			StringIdChatParameter params("city/city", "city_contract_body");
-			params.setTO(city->getCityRegionName());
-			params.setDI(newRank);
-
-			UnicodeString subject = "@city/city:city_contract_subject"; // City Contraction!
-
-			chatManager->sendMail("@city/city:new_city_from", subject, params, mayor->getFirstName(), nullptr);
-		} else {
-			return;
-		}
+	if (startedAssessment && mayor != nullptr) {
+		StringIdChatParameter params("city/city", "city_invalid_body");
+		params.setDI(newRank);
+		UnicodeString subject = "@city/city:city_invalid_subject";
+		zoneServer->getChatManager()->sendMail("@city/city:new_city_from", subject, params, mayor->getFirstName(), nullptr);
 	}
 
-	city->removeAmenitiesOutsideCity(radiusPerRank.get(newRank - 1));
+	if (newRank >= previousRank)
+		return;
 
+	String removedSpecialization;
+	bool hadSpecialization = !city->getCitySpecialization().isEmpty();
+	if (hadSpecialization) {
+		const CitySpecialization* previousSpec = getCitySpecialization(city->getCitySpecialization());
+		removedSpecialization = previousSpec == nullptr ? city->getCitySpecialization() : previousSpec->getDisplayName();
+		if (removedSpecialization.beginsWith("@"))
+			removedSpecialization = StringIdManager::instance()->getStringId(removedSpecialization.hashCode()).toString();
+		city->setCitySpecialization("");
+		if (mayor != nullptr)
+			mayor->updateCooldownTimer("city_specialization");
+	}
+
+	float oldRadius = city->getRadius();
+	float newRadius = radiusPerRank.get(newRank - 1);
+	city->removeAmenitiesOutsideCity(newRadius);
+	// 10/12/26  klambright - Starts a persisted 48-hour removal window only for a second shuttle that survives the contracted city-radius civic cleanup.
+	bool extraShuttleGrace = previousRank == PLANETARY_CAPITAL && city->getShuttleCount() > 1;
+	if (extraShuttleGrace) {
+		city->setExtraShuttleGraceDeadline(System::getTime() + 2 * 24 * 60 * 60);
+		scheduleExtraShuttleCleanup(city);
+	}
+	// continue
 	city->setCityRank(newRank);
-	city->setRadius(radiusPerRank.get(newRank - 1));
+	city->setRadius(newRadius);
 	city->destroyAllStructuresForRank(uint8(newRank + 2), true);
 	city->cleanupDecorations(decorationsPerRank * newRank);
-	city->cleanupTrainers(trainersPerRank * newRank);
+	city->cleanupTrainers(Math::min(trainersPerRank * newRank, maximumSkillTrainers));
 	city->cleanupMissionTerminals(missionTerminalsPerRank * newRank);
 	city->sendStructureInvalidMails();
+
+	StringIdChatParameter contractionParams("city/city", "city_contract_body");
+	contractionParams.setTO(city->getCityRegionName());
+	contractionParams.setDI(newRank);
+	sendMail(city, "@city/city:new_city_from", "@city/city:city_contract_subject", contractionParams, nullptr);
+
+	StringBuffer detail;
+	detail << "The city " << city->getCityRegionName() << " has contracted from " << getCityRankName(previousRank)
+			<< " (rank " << (int) previousRank << ", " << (int) oldRadius << " m) to " << getCityRankName(newRank)
+			<< " (rank " << (int) newRank << ", " << (int) newRadius << " m).";
+	if (hadSpecialization) {
+		detail << " Its specialization " << removedSpecialization
+				<< " has been removed. The mayor must select specialization(s) allowed at the new rank.";
+	}
+	// 10/12/26 klambright - Tells the mayor and all citizens that Rank 8 supports one shuttleport and gives the mayor two days to remove the extra before automatic destruction.
+	if (extraShuttleGrace)
+		detail << " The city now supports one shuttleport. The mayor has two days to remove the last-placed extra shuttleport, otherwise, it will be razed by the Empire.";
+	String detailText = detail.toString();
+	UnicodeString detailSubject = "City Rank and Size Reduced";
+	ChatManager* chatManager = zoneServer->getChatManager();
+
+	if (mayor != nullptr) {
+		mayor->sendSystemMessage(detailText);
+		chatManager->sendMail("@city/city:new_city_from", detailSubject, detailText, mayor->getFirstName());
+	}
+
+	CitizenList* citizens = city->getCitizenList();
+	if (citizens != nullptr) {
+		for (int i = 0; i < citizens->size(); ++i) {
+			uint64 citizenID = citizens->get(i);
+			if (citizenID == city->getMayorID())
+				continue;
+
+			ManagedReference<SceneObject*> citizen = zoneServer->getObject(citizenID);
+			if (citizen == nullptr || !citizen->isPlayerCreature())
+				continue;
+
+			CreatureObject* citizenCreature = citizen.castTo<CreatureObject*>();
+			citizenCreature->sendSystemMessage(detailText);
+			chatManager->sendMail("@city/city:new_city_from", detailSubject, detailText, citizenCreature->getFirstName());
+		}
+	}
+	// continue
 }
+
+// 10/12/26 klambright - Schedules the persisted two-day contraction deadline and safely destroys the tracked second shuttle if the city remains below Rank 9 when the deadline expires.
+void CityManagerImplementation::scheduleExtraShuttleCleanup(CityRegion* city) {
+	if (city == nullptr)
+		return;
+
+	uint64 deadline = city->getExtraShuttleGraceDeadline();
+	if (deadline == 0)
+		return;
+
+	uint64 currentTime = System::getTime();
+	uint32 delay = deadline > currentTime ? (deadline - currentTime) * 1000 : 0;
+	Reference<CityRegion*> cityReference = city;
+	Reference<ZoneServer*> serverReference = zoneServer;
+
+	Core::getTaskManager()->scheduleTask([this, cityReference, serverReference] {
+		if (cityReference == nullptr || serverReference == nullptr)
+			return;
+
+		Locker locker(cityReference);
+
+		if (cityReference->getCityRank() >= PLANETARY_CAPITAL || cityReference->getShuttleCount() < 2) {
+			cityReference->setExtraShuttleGraceDeadline(0);
+			return;
+		}
+
+		uint64 cleanupDeadline = cityReference->getExtraShuttleGraceDeadline();
+		if (cleanupDeadline == 0)
+			return;
+
+		uint64 currentTime = System::getTime();
+		if (cleanupDeadline > currentTime) {
+			serverReference->getCityManager()->scheduleExtraShuttleCleanup(cityReference);
+			return;
+		}
+
+		uint64 shuttleID = cityReference->getSecondShuttleID();
+		ManagedReference<SceneObject*> shuttleObject = serverReference->getObject(shuttleID);
+		ManagedReference<StructureObject*> extraShuttle = shuttleObject.castTo<StructureObject*>();
+		// 10/14/26 AI / klambright - Resolves legacy persisted shuttle-NPC IDs to their owning structure via the child permissions owner ID and repairs the city slot before automatic destruction.
+		if (extraShuttle == nullptr && shuttleObject != nullptr && shuttleObject->isCreatureObject()) {
+			const ContainerPermissions* shuttlePermissions = shuttleObject->getContainerPermissions();
+			uint64 shuttleportID = shuttlePermissions == nullptr ? 0 : shuttlePermissions->getOwnerID();
+			ManagedReference<SceneObject*> shuttleportObject = nullptr;
+			if (shuttleportID != 0)
+				shuttleportObject = serverReference->getObject(shuttleportID);
+			if (shuttleportObject != nullptr && shuttleportObject->isStructureObject() && shuttleportObject->isShuttleInstallation()) {
+				extraShuttle = shuttleportObject.castTo<StructureObject*>();
+				cityReference->setShuttleID(extraShuttle->getObjectID(), shuttleID);
+			}
+		}
+		// continue
+
+		if (extraShuttle == nullptr) {
+			// klambright - Reports an unresolvable expired shuttle structure ID rather than silently resetting the removal deadline.
+			error("Unable to remove the expired extra shuttleport for city " + cityReference->getCityRegionName()
+					+ ": second shuttle structure " + String::valueOf(shuttleID) + " was not found.");
+			cityReference->setExtraShuttleGraceDeadline(0);
+			return;
+		}
+
+		cityReference->sendDestroyObjectMail(extraShuttle);
+		StructureManager::instance()->destroyStructure(extraShuttle);
+		cityReference->setExtraShuttleGraceDeadline(0);
+	}, "RemoveExtraCityShuttle", delay);
+}
+// continue
 
 void CityManagerImplementation::expandCity(CityRegion* city) {
 	uint8 currentRank = city->getCityRank();
 
-	if (currentRank == METROPOLIS) //City doesn't expand if it's metropolis.
+	// 10/10/26 klambright - Uses the new rank-9 ceiling; existing expansion behavior remains unchanged below it.
+	if (currentRank == PLANETARY_CAPITAL)
 		return;
+	// continue
 
 	uint8 newRank = currentRank + 1;
 
@@ -1346,6 +1628,12 @@ void CityManagerImplementation::expandCity(CityRegion* city) {
 
 		ChatManager* chatManager = zoneServer->getChatManager();
 		chatManager->sendMail("@city/city:new_city_from", subject, params, mayor->getFirstName(), nullptr);
+		// 10/12/26 klambright - Notifies the mayor in the rank-9 expansion email that a second shuttleport is now available and must be at least 400m from the first.  also first warns of shuttle built in rank-8 contraction zone and 2 day destroy upon rank reduction.
+		if (!rankCapped && newRank == PLANETARY_CAPITAL) {
+			String rankNineShuttleNotice = "  Your Rank 9 city may place a second shuttleport. It must be placed at least 400m from the existing shuttleport. Be cautious about placement and Rank 8 contraction possibilities, as city contraction will reduce the city size and any civic structure placed within the contraction zone do not have a 2 day grace period for removal and are subject to immediate and prejudicial removal by the Empire.";
+			chatManager->sendMail("@city/city:new_city_from", "Second City Shuttleport Available", rankNineShuttleNotice, mayor->getFirstName());
+		}
+		// continue
 	}
 
 	if (rankCapped) {
@@ -1353,6 +1641,10 @@ void CityManagerImplementation::expandCity(CityRegion* city) {
 	} else {
 		city->setCityRank(newRank);
 		city->setRadius(radiusPerRank.get(newRank - 1));
+		// 10/12/26 klambright - Clears any stale two-day cleanup deadline if the city regains Rank 9 before its extra shuttle is removed (which could only happen if city expansion/reduction were to occur less than every 3 days).
+		if (newRank == PLANETARY_CAPITAL)
+			city->setExtraShuttleGraceDeadline(0);
+		// continue
 		city->sendStructureValidMails();
 	}
 }
@@ -1374,9 +1666,11 @@ void CityManagerImplementation::destroyCity(CityRegion* city) {
 
 	city->destroyNavMesh();
 
-	for (int i = CityManager::METROPOLIS; i > 0; i--) {
+	// 10/11/26 klambright - Removes structures from all nine ranks during city destruction without relying on the legacy rank-5 METROPOLIS alias.
+	for (int i = CityManager::PLANETARY_CAPITAL; i > 0; i--) {
 		city->destroyAllStructuresForRank(uint8(i), false);
 	}
+	// continue
 
 	city->removeAllTerminals();
 	city->removeAllSkillTrainers();
@@ -1604,41 +1898,62 @@ void CityManagerImplementation::sendCityAdvancement(CityRegion* city, CreatureOb
 		return;
 
 	int currentRank = citizensPerRank.get(rank - 1);
-	int nextRank = citizensPerRank.get(rank == METROPOLIS ? rank - 1 : rank);
+	int nextRank = citizensPerRank.get(rank == PLANETARY_CAPITAL ? rank - 1 : rank);
 
-	listbox->addMenuItem("@city/city:city_rank_prompt @city/city:rank" + String::valueOf(rank)); // City Rank:
+	// 10/10/26 klambright - Shows the nine literal server-side rank names and reports the capped trainer allowance without requiring new client string IDs.
+	listbox->addMenuItem("@city/city:city_rank_prompt " + getCityRankName(rank)); // City Rank:
 	listbox->addMenuItem("@city/city:city_pop_prompt " + String::valueOf(city->getCitizenCount()) + " @city/city:citizens"); // City Population: citizens
 	listbox->addMenuItem("@city/city:pop_req_current_rank " + String::valueOf(currentRank) + " @city/city:citizens"); // Pop. Req. for Current Rank: citizens
 
-	if (rank < CityRegion::RANK_METROPOLIS)
+	if (rank < CityRegion::RANK_PLANETARY_CAPITAL)
 		listbox->addMenuItem("@city/city:pop_req_next_rank " + String::valueOf(nextRank) + " @city/city:citizens"); // Pop. Req. for Next Rank: citizens
 	else
 		listbox->addMenuItem("@city/city:pop_req_next_rank @city/city:max_rank_achieved"); // Pop. Req. for Next Rank: Maximum City Rank Achieved
 
 	listbox->addMenuItem("@city/city:max_decorations " + String::valueOf(rank * decorationsPerRank)); // Max Decorations:
-	listbox->addMenuItem("@city/city:max_trainers " + String::valueOf(rank * trainersPerRank)); // Max Skill Trainers:
+	listbox->addMenuItem("@city/city:max_trainers " + String::valueOf(Math::min(rank * trainersPerRank, maximumSkillTrainers))); // Max Skill Trainers:
 	listbox->addMenuItem("@city/city:max_terminals " + String::valueOf(rank * missionTerminalsPerRank)); // Max Mission Terminals:
+	// continue
 
 	listbox->addMenuItem("@city/city:rank_enabled_structures"); // Rank Enabled Structures
 
 	if (rank >= CityRegion::RANK_OUTPOST) {
 		listbox->addMenuItem("@city/city:default \t @city/city:small_garden"); // Small Gardens
 	}
-	if (rank >= CityRegion::RANK_VILLAGE) {
+	// 10/11/26 klambright - Uses the renamed rank-2 and rank-3 constants when listing rank-enabled structures in the city status menu; preserves the existing structure unlock thresholds.
+	if (rank >= CityRegion::RANK_WAYSTATION_ENCAMPMENT) {
 		listbox->addMenuItem("@city/city:default \t @city/city:bank"); // Bank
 		listbox->addMenuItem("@city/city:default \t @city/city:cantina"); // Cantina
 		listbox->addMenuItem("@city/city:default \t @city/city:medium_garden"); // Medium Gardens
 		listbox->addMenuItem("@city/city:default \t @city/city:garage"); // Garage
 	}
-	if (rank >= CityRegion::RANK_TOWNSHIP) {
+	if (rank >= CityRegion::RANK_HOMESTEAD_SECTOR) {
 		listbox->addMenuItem("@city/city:default \t @city/city:cloning_facility"); // Cloning Facility
 		listbox->addMenuItem("@city/city:default \t @city/city:hospital"); // Hospital
 		listbox->addMenuItem("@city/city:default \t @city/city:large_garden"); // Large Gardens
 	}
-	if (rank >= CityRegion::RANK_CITY) {
+	// klambright - Preserves rank-4 structure unlocks under the renamed Guild Borough rank constant.
+	if (rank >= CityRegion::RANK_GUILD_BOROUGH) {
 		listbox->addMenuItem("@city/city:default \t @city/city:theater"); // Theater
 		listbox->addMenuItem("@city/city:default \t @city/city:shuttleport"); // Shuttleport
 	}
+	// klambright - Shows rank-9 shuttleport capacity in the city terminal and states the minimum separation needed to place the second port.
+	if (rank >= CityRegion::RANK_PLANETARY_CAPITAL) {
+		int shuttleCount = city->getShuttleCount();
+		int placedShuttleCount = 0;
+		for (int i = 0; i < city->getStructuresCount(); ++i) {
+			ManagedReference<StructureObject*> structure = city->getCivicStructure(i);
+			if (structure != nullptr && structure->isShuttleInstallation())
+				++placedShuttleCount;
+		}
+		shuttleCount = Math::max(shuttleCount, placedShuttleCount);
+
+		String shuttleAvailability = shuttleCount < 2
+				? "Second shuttleport available; at least 400m separation required."
+				: "Shuttleport capacity reached: 2 / 2.";
+		listbox->addMenuItem("Shuttleports: " + String::valueOf(shuttleCount) + " / 2 placed. " + shuttleAvailability);
+	}
+	// continue
 
 	creature->sendMessage(listbox->generateMessage());
 
@@ -1723,10 +2038,12 @@ void CityManagerImplementation::promptRegisterCity(CityRegion* city, CreatureObj
 		return;
 	}
 
-	if (city->getCityRank() < TOWNSHIP) {
-		creature->sendSystemMessage("@city/city:cant_register_rank"); //Your city must be rank 3 (Township) to be registered on the planetary map.
+	// 10/11/26  klambright - Uses the renamed rank-3 constant and displayed name for planetary-map registration eligibility; existing threshold remains rank 3.
+	if (city->getCityRank() < HOMESTEAD_SECTOR) {
+		creature->sendSystemMessage("@city/city:cant_register_rank"); //Your city must be rank 3 (Homestead Sector) to be registered on the planetary map.
 		return;
 	}
+	// continue
 
 	ManagedReference<SuiMessageBox*> box = new SuiMessageBox(creature, SuiWindowType::CITY_REGISTER);
 	box->setPromptTitle("@city/city:register_t"); //Register City
@@ -1854,10 +2171,12 @@ void CityManagerImplementation::promptAdjustTaxes(CityRegion* city, CreatureObje
 		return;
 	}
 
-	if (city->getCityRank() < CityRegion::RANK_VILLAGE) {
+	// 10/11/26 klambright - Uses the renamed rank-2 constant for the existing minimum-rank tax check in the mayor tax adjustment flow.
+	if (city->getCityRank() < CityRegion::RANK_WAYSTATION_ENCAMPMENT) {
 		mayor->sendSystemMessage("@city/city:no_rank_taxes"); // Your city must be at least rank 2 to levy taxes.
 		return;
 	}
+	// continue
 
 	ManagedReference<SuiListBox*> listbox = new SuiListBox(mayor, SuiWindowType::CITY_ADJUST_TAX);
 	listbox->setPromptTitle("@city/city:adjust_taxes_t"); //Adjust Taxes
@@ -1891,10 +2210,12 @@ void CityManagerImplementation::promptSetTax(CityRegion* city, CreatureObject* m
 		return;
 	}
 
-	if (city->getCityRank() < CityRegion::RANK_VILLAGE) {
+	// 10/11/26 klambright - Applies the same renamed rank-2 tax eligibility threshold when validating an individual tax selection.
+	if (city->getCityRank() < CityRegion::RANK_WAYSTATION_ENCAMPMENT) {
 		mayor->sendSystemMessage("@city/city:no_rank_taxes"); // Your city must be at least rank 2 to levy taxes.
 		return;
 	}
+	// continue
 
 	if (cityTax->getMenuText() == "@city/city:travel_tax" && !city->hasShuttleInstallation()) {
 		mayor->sendSystemMessage("@city/city:no_shuttleport"); // You can't place a travel fee. There is no shuttleport in this city.
@@ -1952,6 +2273,13 @@ void CityManagerImplementation::sendMaintenanceReport(CityRegion* city, Creature
 
 	int totalcost = 0;
 
+	// 10/15/26 klambright - Makes the mayor's Maintenance Report (SuiListBox CITY_TREASURY_REPORT, opened from the city terminal) show 0 credits for every line and a 0 total for the permanent New Canejo city.
+	// The local maintenanceDiscount intentionally shadows the static CityManagerImplementation::maintenanceDiscount, and flatUpkeepScale zeroes the hard-coded 1500/5000 credit costs. Display only; actual billing is skipped in deductCityMaintenance.
+	bool zeroUpkeep = isPermanentRank9ZeroUpkeepCity(city);
+	float maintenanceDiscount = zeroUpkeep ? 0.0f : CityManagerImplementation::maintenanceDiscount;
+	int flatUpkeepScale = zeroUpkeep ? 0 : 1;
+	// continue
+
 	ManagedReference<SuiListBox*> maintList = new SuiListBox(creature, SuiWindowType::CITY_TREASURY_REPORT);
 	maintList->setPromptTitle("@city/city:maint_info_t"); // Maintenance Report
 	maintList->setPromptText("@city/city:maint_info_d");
@@ -1978,8 +2306,10 @@ void CityManagerImplementation::sendMaintenanceReport(CityRegion* city, Creature
 	}
 
 	if (city->isRegistered()) {
-		totalcost += 5000;
-		maintList->addMenuItem("@city/city:map_reg_cost"); // Map Registration: 5000 credits
+		// 10/15/26 klambright - Shows the New Canejo map registration line as 0 credits (see zeroUpkeep above); other cities unchanged.
+		totalcost += 5000 * flatUpkeepScale;
+		maintList->addMenuItem(zeroUpkeep ? "Map Registration: 0 credits" : "@city/city:map_reg_cost"); // Map Registration: 5000 credits
+		// continue
 	} else {
 		maintList->addMenuItem("@city/city:map_unreg"); // Map Registration: Unregistered
 	}
@@ -1990,7 +2320,9 @@ void CityManagerImplementation::sendMaintenanceReport(CityRegion* city, Creature
 		if (spec != nullptr) {
 			int speccost = maintenanceDiscount * spec->getCost();
 			totalcost += speccost;
-			maintList->addMenuItem("@city/city:specialization " + String::valueOf(speccost) + " @city/city:credits");
+			// 10/10/26 klambright - Shows the selected single/composite specialization name alongside its discounted upkeep in the existing mayor maintenance menu.
+			maintList->addMenuItem("@city/city:specialization " + spec->getDisplayName() + " - " + String::valueOf(speccost) + " @city/city:credits");
+			// continue
 		}
 
 	} else {
@@ -2047,7 +2379,9 @@ void CityManagerImplementation::sendMaintenanceReport(CityRegion* city, Creature
 			}
 
 		} else if ( sceno != nullptr) {
-			int decCost = maintenanceDiscount * 1500;
+			// 10/15/26 klambright - Decoration report cost is 0 for New Canejo via flatUpkeepScale (display only).
+			int decCost = maintenanceDiscount * 1500 * flatUpkeepScale;
+			// --->END OF MODIFICATION<--
 			totalcost += decCost;
 			maintString += sceno->getObjectName()->getFullPath() + " : " + String::valueOf(decCost) + " @city/city:credits";
 		}
@@ -2061,7 +2395,9 @@ void CityManagerImplementation::sendMaintenanceReport(CityRegion* city, Creature
 		ManagedReference<SceneObject*> trainer = city->getCitySkillTrainer(i);
 
 		if (trainer != nullptr) {
-			int trainerCost = maintenanceDiscount * 1500;
+			// 10/15/26 klambright - Trainer report cost is 0 for New Canejo via flatUpkeepScale (display only).
+			int trainerCost = maintenanceDiscount * 1500 * flatUpkeepScale;
+			// --->END OF MODIFICATION<--
 			totalcost += trainerCost;
 			maintList->addMenuItem("@city/city:default \t" + trainer->getObjectName()->getFullPath() + " : " + String::valueOf(trainerCost) + " @city/city:credits");
 		}
@@ -2071,7 +2407,9 @@ void CityManagerImplementation::sendMaintenanceReport(CityRegion* city, Creature
 		ManagedReference<SceneObject*> term = city->getCityMissionTerminal(i);
 
 		if (term != nullptr) {
-			int terminalCost = maintenanceDiscount * 1500;
+			// 10/15/26 klambright - Mission terminal report cost is 0 for New Canejo via flatUpkeepScale (display only).
+			int terminalCost = maintenanceDiscount * 1500 * flatUpkeepScale;
+			// --->END OF MODIFICATION<--
 			totalcost += terminalCost;
 			maintList->addMenuItem("@city/city:default \t" + term->getObjectName()->getFullPath() + " : " + String::valueOf(terminalCost) + " @city/city:credits");
 		}
@@ -2286,11 +2624,48 @@ void CityManagerImplementation::unregisterFromMayoralRace(CityRegion* city, Crea
 }
 
 const CitySpecialization* CityManagerImplementation::getCitySpecialization(const String& name) {
-	if (!citySpecializations.containsKey(name))
-		return nullptr;
-
-	return &citySpecializations.get(name);
+	return citySpecializations.getByName(name);
 }
+
+const CitySpecialization* CityManagerImplementation::getCitySpecializationByMask(uint16 selectionMask) {
+	return citySpecializations.getBySelectionMask(selectionMask);
+}
+
+// 10/10/26 klambright - Returns literal server-rendered city rank names, including all new ranks, so region entry messages and terminal reports do not depend on modified client string tables.
+String CityManagerImplementation::getCityRankName(byte rank) {
+	if (rank == OUTPOST) {
+		return "Outpost";
+	} else if (rank == WAYSTATION_ENCAMPMENT) {
+		return "Waystation Encampment";
+	} else if (rank == HOMESTEAD_SECTOR) {
+		return "Homestead Sector";
+	} else if (rank == GUILD_BOROUGH) {
+		return "Guild Borough";
+	} else if (rank == SPACEPORT_TOWNSHIP) {
+		return "Spaceport Township";
+	} else if (rank == INDUSTRIAL_NEO_CITY) {
+		return "Industrial Neo-City";
+	} else if (rank == UPPER_CITY_SPIRE) {
+		return "Upper City Spire";
+	} else if (rank == HIGH_SECTOR_CITADEL) {
+		return "High Sector Citadel";
+	} else if (rank == PLANETARY_CAPITAL) {
+		return "Planetary Capital";
+	}
+
+	return "Unranked";
+}
+
+// klambright - Returns the configured city radius through the CityManager API for persisted-region migration, logging invalid ranks or unavailable configuration instead of exposing static implementation storage.
+float CityManagerImplementation::getCityRadiusForRank(byte rank) {
+	if (rank == 0 || rank > radiusPerRank.size()) {
+		error() << "Cannot resolve city radius for invalid rank " << (int)rank;
+		return 0.0f;
+	}
+
+	return radiusPerRank.get(rank - 1);
+}
+// continue
 
 const CityTax* CityManagerImplementation::getCityTax(int idx) {
 	if (idx > cityTaxes.size() - 1 || idx < 0)
@@ -2333,7 +2708,9 @@ bool CityManagerImplementation::canSupportMoreTrainers(CityRegion* city) {
 	if (city == nullptr)
 		return false;
 
-	return city->getSkillTrainerCount() < (trainersPerRank * city->getCityRank());
+	// 10/10/26 klambright - Enforces six trainers per rank without allowing the rank-9 formula to exceed the configured 36-trainer ceiling.
+	return city->getSkillTrainerCount() < Math::min(trainersPerRank * city->getCityRank(), maximumSkillTrainers);
+	// --->END OF FILE MODIFICATIONS - kl<---
 }
 
 bool CityManagerImplementation::canSupportMoreMissionTerminals(CityRegion* city) {

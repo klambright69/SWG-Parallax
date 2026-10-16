@@ -51,19 +51,33 @@ class CityManager extends ManagedService implements Logger {
 	public transient static byte cityVotingCyclesUntilLocked;
 	public transient static int decorationsPerRank;
 	public transient static int trainersPerRank;
+	// 10/10/26 klambright - Caps rank-scaled trainer capacity at 36 despite nine city ranks; CityManagerImplementation.cpp uses this limit for placement, rank cleanup, and advancement reports.
+	public transient static int maximumSkillTrainers;
+	// continue
 	public transient static int missionTerminalsPerRank;
 	public transient static float maintenanceDiscount;
+	public transient static int mayoralExperience;
+	public transient static int candidateVoteExperience;
 
 	@dereferenced
 	private transient VectorMap<string, CityRegion> cities;
 
-	//City Ranks
+	// 10/11/26 klambright - Defines nine city ranks and aliases legacy names to the corresponding renamed ranks; rank progression and cleanup use PLANETARY_CAPITAL as the rank-9 ceiling.
 	public static final byte CLIENT = 0;
 	public static final byte OUTPOST = 1;
-	public static final byte VILLAGE = 2;
-	public static final byte TOWNSHIP = 3;
-	public static final byte CITY = 4;
-	public static final byte METROPOLIS = 5;
+	public static final byte WAYSTATION_ENCAMPMENT = 2;
+	public static final byte HOMESTEAD_SECTOR = 3;
+	public static final byte GUILD_BOROUGH = 4;
+	public static final byte SPACEPORT_TOWNSHIP = 5;
+	public static final byte INDUSTRIAL_NEO_CITY = 6;
+	public static final byte UPPER_CITY_SPIRE = 7;
+	public static final byte HIGH_SECTOR_CITADEL = 8;
+	public static final byte PLANETARY_CAPITAL = 9;
+	public static final byte VILLAGE = WAYSTATION_ENCAMPMENT;
+	public static final byte TOWNSHIP = HOMESTEAD_SECTOR;
+	public static final byte CITY = GUILD_BOROUGH;
+	public static final byte METROPOLIS = SPACEPORT_TOWNSHIP;
+	// continue
 
 	public CityManager(ZoneServer zserv) {
 		Logger.setLoggingName("CityManager");
@@ -129,6 +143,10 @@ class CityManager extends ManagedService implements Logger {
 
 	public native void expandCity(CityRegion city);
 
+	// 10/12/26 klambright - Schedules persisted rank-contraction cleanup for a second shuttle, restoring the remaining grace period after city-region reloads.
+	public native void scheduleExtraShuttleCleanup(CityRegion city);
+	// continue
+
 	public native void destroyCity(CityRegion city);
 
 	public native void sendStatusReport(CityRegion city, CreatureObject creature, SceneObject terminal = null);
@@ -136,6 +154,12 @@ class CityManager extends ManagedService implements Logger {
 	public native void promptCitySpecialization(CityRegion city, CreatureObject mayor, SceneObject terminal = null);
 
 	public native void changeCitySpecialization(CityRegion city, CreatureObject mayor, final string spec);
+
+	// 10/10/26 klambright - Provides server-rendered rank names so the four new rank labels work without client string-table/TRE patches. Also exposes the validated Lua-configed radius for one rank so CityRegion database migration does not access implementation-only static storage.
+	public native string getCityRankName(byte rank);
+
+	public native float getCityRadiusForRank(byte rank);
+	// continue
 
 	public native void promptWithdrawCityTreasury(CityRegion city, CreatureObject mayor, SceneObject terminal = null);
 
@@ -251,6 +275,11 @@ class CityManager extends ManagedService implements Logger {
 
 	@local
 	public native final CitySpecialization getCitySpecialization(final string cityspec);
+
+	// 10/11/26 klambright - Resolves the session's pending selection directly by bitmask so confirmation and persistence do not depend on localized SUI text or guessed base keys.
+	@local
+	public native final CitySpecialization getCitySpecializationByMask(unsigned short selectionMask);
+	//--->END OF MODIFICATIONS - kl<---
 
 	@local
 	public native final CityTax getCityTax(int idx);

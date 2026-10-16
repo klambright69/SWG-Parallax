@@ -53,12 +53,16 @@ object_building_player_city_bank_tatooine = object_building_player_city_shared_b
 	gameObjectType = 4096,
 	abilityRequired = "place_bank",
 	groundZoneComponent = "StructureZoneComponent",
+	-- 10/08/26 - AI / klambright
+	-- Omits the rank-dependent third-position object from the template so template child creation cannot restore a bank terminal
+	-- over the junk dealer on restart. StructureZoneComponent creates a bank terminal below level 5, or the standard junk_dealer
+	-- mobile at level 5+, and reevaluates the maintained city rank whenever this bank enters the zone.
 	childObjects = {
 		{templateFile = "object/tangible/terminal/terminal_player_structure.iff", x = 0, z = 0, y = -1, ox = 0, oy = 1, oz = 0, ow = 0, cellid = -1, containmentType = -1},
 		{templateFile = "object/tangible/terminal/terminal_bank.iff", x = -1, z = 0, y = 0, ox = 0, oy = -0.707107, oz = 0, ow = 0.707107, cellid = -1, containmentType = -1},
-		{templateFile = "object/tangible/terminal/terminal_bank.iff", x = 0, z = 0, y = 1, ox = 0, oy = 0, oz = 0, ow = 1, cellid = -1, containmentType = -1},
-		{templateFile = "object/tangible/terminal/terminal_bank.iff", x = 1, z = 0, y = 0, ox = 0, oy = 0.707107, oz = 0, ow = 0.707107, cellid = -1, containmentType = -1}
+		{templateFile = "object/tangible/terminal/terminal_bazaar.iff", x = 0, z = 0, y = 1, ox = 0, oy = 0, oz = 0, ow = 1, cellid = -1, containmentType = -1},
 	}
+	--->END OF MODIFICATION<--
 }
 
 ObjectTemplates:addTemplate(object_building_player_city_bank_tatooine, "object/building/player/city/bank_tatooine.iff")
